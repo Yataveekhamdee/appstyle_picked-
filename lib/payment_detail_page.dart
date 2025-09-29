@@ -29,7 +29,7 @@ class PaymentDetailPage extends StatelessWidget {
     // ปรับค่าพวกนี้ได้ตามจริง หรือดึงจาก backend
     const shippingMethod = 'Thailand-Post';
     const addressLine =
-        'คุณ ญาตาวี 249 ม.2 ต.ดอนทราย อ.ปากท่อ จ.ราชบุรี 70235\nเบอร์โทร 08x-xxxx-xxx';
+        'คุณ 249 ม.2 ต.ดอนทราย อ.ปากท่อ จ.ราชบุรี 70235\nเบอร์โทร 08x-xxxx-xxx';
     const discount = 0.0;             // ส่วนลด
     const shippingFee = 0.0;          // ค่าส่ง
     const vatIncluded = true;         // ราคารวม VAT แล้ว
