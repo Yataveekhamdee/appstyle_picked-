@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 
-// เพิ่ม imports ของหน้าต่าง ๆ ให้ครบ
+// ===== นำเข้าหน้าต่าง ๆ ของคุณตามเดิม =====
 import '../login_page.dart';
 import '../signup_page.dart';
 import '../change_password_page.dart';
 import '../product_list_page.dart';
 import '../stylish_list_page.dart';
 import '../duex_list_page.dart';
-import '../cintage_list_page.dart';
+import '../feelfree_list_page.dart';   // ✅ แก้พาธให้ถูก (../)
 import '../unigam_list_page.dart';
 import '../checkout_page.dart';
 import '../payment_detail_page.dart';
-import 'cart_page.dart';
 
 void main() => runApp(const MyApp());
 
@@ -23,77 +22,20 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Style Picked',
-
-      // ❗บังคับโหมดสว่าง ไม่ตามเครื่อง
       themeMode: ThemeMode.light,
-
-      // 🎨 กำหนดธีมให้พื้นเป็นขาว ตัวอักษรดำ และปิดการ tint
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.black,
-          brightness: Brightness.light,
-        ).copyWith(
-          primary: Colors.black,
-          onPrimary: Colors.white,
-          secondary: Colors.black,
-          onSecondary: Colors.white,
-          surface: Colors.white,
-          onSurface: Colors.black87,
-          background: Colors.white,
-          onBackground: Colors.black87,
-          error: Colors.red,
-          onError: Colors.white,
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.black)
+            .copyWith(primary: Colors.black),
         scaffoldBackgroundColor: Colors.white,
-
-        // ปิดการ tint ของผิวต่างๆ
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
         ),
-        cardTheme: const CardTheme(
-          color: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          elevation: 2,
-          shadowColor: Color(0x14000000),
-        ),
-        dialogTheme: const DialogTheme(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-        ),
-        bottomSheetTheme: const BottomSheetThemeData(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-        ),
-        popupMenuTheme: const PopupMenuThemeData(
-          color: Colors.white,
-          surfaceTintColor: Colors.transparent,
-        ),
-
-        // ทำให้ NavigationBar เป็นพื้นดำ ตัวอักษร/ไอคอนขาว
-        navigationBarTheme: const NavigationBarThemeData(
-          backgroundColor: Colors.black,
-          indicatorColor: Colors.white10,
-          elevation: 0,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          iconTheme: MaterialStatePropertyAll(IconThemeData(color: Colors.white)),
-          labelTextStyle: MaterialStatePropertyAll(TextStyle(color: Colors.white)),
-        ),
-
-        // ปุ่มหลักเป็นดำ-ขาวให้ตรงกับดีไซน์
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            backgroundColor: Colors.black,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          ),
-        ),
       ),
-
       home: const HomePage(),
       routes: {
         '/login': (_) => const LoginPage(),
@@ -102,11 +44,10 @@ class MyApp extends StatelessWidget {
         '/products': (_) => const ProductListPage(),
         '/stylish': (_) => const StylishListPage(),
         '/duex': (_) => const DuexListPage(),
-        '/cintage': (_) => const CintageListPage(),
+        '/feelfree': (_) => const FeelFreeListPage(), // ✅ ใช้ชื่อคลาสที่ถูก
         '/unigam': (_) => const UnigamListPage(),
         '/checkout': (_) => const CheckoutPage(),
         '/paymentDetail': (_) => const PaymentDetailPage(),
-        '/cart': (_) => const CartPage()
       },
     );
   }
@@ -122,142 +63,110 @@ class _HomePageState extends State<HomePage> {
   final bannerCtrl = PageController();
   int bannerIndex = 0;
 
-  final highlightCtrl = PageController(viewportFraction: .42);
-  int highlightIndex = 0;
-
-  // ✅ filter chips
-  final filters = const ['See All', 'stylish', 'duex', 'cintage', 'unigam'];
-
-  final banners = const [
-    'https://cdn.prod.website-files.com/619cb4782095e30d37ddc385/67b3132fe42d36d7e2292be0_how-tom-make-clothes-always-smell-good-p-500.jpg',
-    'https://cdn.prod.website-files.com/619cb4782095e30d37ddc385/64a983eed92cf06a0089ba42_how-to-start-your-own-tshirt-business-p-1080.jpg',
-  ];
-
-  // ✅ ใช้รูปจาก assets ที่มีอยู่จริง (ราคาเป็น double)
-  final items = const [
-    ProductItem(
-      title: 'duex',
-      price: 250.0,
-      image: 'assets/images/duex/duex00.jpg',
-    ),
-    ProductItem(
-      title: 'stylish',
-      price: 257.0,
-      image: 'assets/images/stylish/stylish00.jpg',
-    ),
-    ProductItem(
-      title: 'unigam',
-      price: 238.0,
-      image: 'assets/images/unigam/uni00.jpg',
-    ),
-    ProductItem(
-      title: 'duex',
-      price: 269.0,
-      image: 'assets/images/duex/duex01.jpg',
-    ),
-  ];
+  // ฟิลเตอร์ใต้ช่องค้นหา
+  final _filters = const ['See All', 'stylish', 'duex', 'feelfree', 'unigam'];
 
   @override
   void dispose() {
     bannerCtrl.dispose();
-    highlightCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true, // ให้เนื้อหาไหลใต้ bottomSheet ได้ลื่นขึ้น
-      backgroundColor: Colors.white,
+      extendBody: true,
+
+      // ===== FAB "เทรนด์" วงกลม =====
+      floatingActionButton: SizedBox(
+        width: 64,
+        height: 64,
+        child: FloatingActionButton(
+          onPressed: () {},
+          shape: const CircleBorder(),
+          backgroundColor: const Color(0xFF7B57FF),
+          foregroundColor: Colors.white,
+          elevation: 4,
+          child: const FittedBox(
+            child: Padding(
+              padding: EdgeInsets.all(6),
+              child: Text('เทรนด์', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // แถวเมนู + ค้นหา + ตะกร้า
+            // แถวค้นหา + ตะกร้า (เอาปุ่มเมนูวงกลมออกแล้ว)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
                 child: Row(
                   children: [
-                    _roundIcon(Icons.menu, onTap: () {}),
+                    const SizedBox(width: 2), // เว้นระยะเล็กน้อยแทนปุ่มเมนู
+                    const Expanded(child: _SearchField()),
                     const SizedBox(width: 8),
-                    Expanded(child: _SearchField()),
-                    const SizedBox(width: 8),
-                    _roundIcon(Icons.shopping_cart_outlined, onTap: () {}),
+                    _roundIcon(Icons.shopping_cart_outlined, onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('ไปตะกร้า')),
+                      );
+                    }),
                   ],
                 ),
               ),
             ),
 
-            // ===== Filter chips =====
+            // ===== ปุ่มฟิลเตอร์ =====
             SliverToBoxAdapter(
-              child: SizedBox(
-                height: 42,
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  scrollDirection: Axis.horizontal,
-                  itemBuilder: (_, i) => _FilterChip(
-                    text: filters[i],
-                    // 👉 ไม่ไฮไลต์ See All: ใช้สีปกติทุกตัว
-                    selected: false,
-                    onSelected: (_) {
-                      final f = filters[i];
-                      if (f == 'See All') {
-                        Navigator.pushNamed(context, '/products');
-                      } else if (f == 'stylish') {
-                        Navigator.pushNamed(context, '/stylish');
-                      } else if (f == 'duex') {
-                        Navigator.pushNamed(context, '/duex');
-                      } else if (f == 'cintage') {
-                        Navigator.pushNamed(context, '/cintage');
-                      } else if (f == 'unigam') {
-                        Navigator.pushNamed(context, '/unigam');
-                      }
-                    },
-                  ),
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemCount: filters.length,
-                ),
-              ),
-            ),
-
-            // ===== Banner =====
-            SliverToBoxAdapter(
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Stack(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+                child: Row(
                   children: [
-                    PageView.builder(
-                      controller: bannerCtrl,
-                      onPageChanged: (i) => setState(() => bannerIndex = i),
-                      itemCount: banners.length,
-                      itemBuilder: (_, i) => _RoundedImage(url: banners[i]),
+                    _FilterPill(
+                      label: _filters[0],
+                      selected: true, // ✅ ยัง active แต่หน้าตาเหมือนปุ่มอื่น (ดูสไตล์ด้านล่าง)
+                      onTap: () => Navigator.pushNamed(context, '/products'),
                     ),
-                    const Center(
-                      child: Text(
-                        'Get your own clothes\nand style!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          shadows: [Shadow(blurRadius: 6, color: Colors.black54)],
-                        ),
-                      ),
-                    ),
-                    Positioned(right: 14, top: 12, child: _ghostBtn('More  >', () {})),
-                    Positioned(
-                      bottom: 10,
-                      left: 0,
-                      right: 0,
-                      child: _Dots(count: banners.length, active: bannerIndex),
-                    )
+                    const SizedBox(width: 8),
+                    _FilterPill(label: 'stylish',
+                        onTap: () => Navigator.pushNamed(context, '/stylish')),
+                    const SizedBox(width: 8),
+                    _FilterPill(label: 'duex',
+                        onTap: () => Navigator.pushNamed(context, '/duex')),
+                    const SizedBox(width: 8),
+                    _FilterPill(label: 'feelfree',
+                        onTap: () => Navigator.pushNamed(context, '/feelfree')),
+                    const SizedBox(width: 8),
+                    _FilterPill(label: 'unigam',
+                        onTap: () => Navigator.pushNamed(context, '/unigam')),
                   ],
                 ),
               ),
             ),
 
-            // ===== Brands (โชว์รูปแรกของแต่ละแบรนด์) =====
+            // ===== พรีวิวด้านบนสุด =====
+            SliverToBoxAdapter(
+              child: TopPreviewSimple(
+                bg: 'assets/images/unigam/uni04.jpg',
+                left:  MiniItem('assets/images/duex/duex01.jpg', 299),
+                right: MiniItem('assets/images/feelfree/feelfree03.jpg', 309),
+                onMore: () {},
+              ),
+            ),
+
+            // ===== แถบโปรโมชัน =====
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(12, 10, 12, 0),
+                child: _PromoStrip(),
+              ),
+            ),
+
+            // ===== Brands (4 การ์ด) =====
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
@@ -272,52 +181,32 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // ===== Newest + ... =====
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(12, 10, 12, 6),
-                child: Row(
-                  children: [
-                    _StripTitle(text: 'Newest!'),
-                    Spacer(),
-                    _Kebab(),
-                  ],
-                ),
-              ),
-            ),
-
-            // ===== Coming soon =====
+            // ===== รูปเสื้อจาก assets ใต้แบรนด์ =====
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: AspectRatio(
-                  aspectRatio: 16 / 9,
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
                   child: Stack(
-                    children: [
-                      const _RoundedImage(
-                        url:
-                            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRd2tp-BQKzegwNcU0k1YQ2P8YTk-6CIH-yRQ&s',
-                      ),
-                      const Center(
-                        child: Text(
-                          'Coming Soon',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            shadows: [Shadow(blurRadius: 6, color: Colors.black54)],
-                          ),
+                    children: const [
+                      AspectRatio(
+                        aspectRatio: 16 / 9,
+                        child: Image(
+                          image: AssetImage('assets/images/unigam/uni04.jpg'),
+                          fit: BoxFit.cover,
                         ),
                       ),
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: IconButton.filled(
-                          onPressed: () {},
-                          icon: const Icon(Icons.arrow_forward_ios, size: 18),
-                          style: const ButtonStyle(
-                            backgroundColor: MaterialStatePropertyAll(Colors.white70),
-                            foregroundColor: MaterialStatePropertyAll(Colors.black87),
+                      Positioned.fill(
+                        child: Center(
+                          child: Text(
+                            'Get your own clothes\nand style!',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              shadows: [Shadow(blurRadius: 8, color: Colors.black54)],
+                            ),
                           ),
                         ),
                       ),
@@ -327,56 +216,22 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // เผื่อพื้นที่ไม่ให้เนื้อหาโดนปุ่มเข้าสู่ระบบที่เป็น bottomSheet บัง
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            const SliverToBoxAdapter(child: SizedBox(height: 140)),
           ],
         ),
       ),
 
-      // แผงปุ่มเข้าสู่ระบบติดขอบล่าง
-      bottomSheet: _LoginBottomBar(
-        onTap: () => Navigator.pushNamed(context, '/login'),
-      ),
-
-      // ===== bottom nav (นำทางได้จริง) =====
-      bottomNavigationBar: NavigationBar(
-        height: 68,
-        backgroundColor: Colors.black,
-        indicatorColor: Colors.white10,
-        selectedIndex: 0, // หน้านี้เป็น Home
-        onDestinationSelected: (index) {
-          if (index == 0) {
-            // อยู่หน้า Home แล้ว
-          } else if (index == 1) {
-            Navigator.pushNamed(context, '/products');
-          } else if (index == 2) {
-            Navigator.pushNamed(context, '/products'); // ใช้ /products แทน Search ชั่วคราว
-          } else if (index == 3) {
-            Navigator.pushNamed(context, '/login');
-          }
+      // ===== Bottom bar =====
+      bottomNavigationBar: _BottomBar(
+        showBadge: false,
+        onTapHome: () {},
+        onTapSearch: () => Navigator.pushNamed(context, '/products'),
+        onTapCart: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('ไปตะกร้า')),
+          );
         },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined, color: Colors.white),
-            selectedIcon: Icon(Icons.home, color: Colors.white),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined, color: Colors.white),
-            selectedIcon: Icon(Icons.grid_view, color: Colors.white),
-            label: 'Category',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.search, color: Colors.white),
-            selectedIcon: Icon(Icons.search, color: Colors.white),
-            label: 'Search',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline, color: Colors.white),
-            selectedIcon: Icon(Icons.person, color: Colors.white),
-            label: 'user',
-          ),
-        ],
+        onTapUser: () => Navigator.pushNamed(context, '/login'),
       ),
     );
   }
@@ -399,7 +254,10 @@ class _HomePageState extends State<HomePage> {
 }
 
 /// ===== components =====
+
 class _SearchField extends StatelessWidget {
+  const _SearchField();
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -421,26 +279,38 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  final String text;
+/// ปุ่มฟิลเตอร์ทรงกลมรี (สไตล์เดียวกับปุ่มอื่นทั้งหมด + ถ้า selected ให้ขอบหนาขึ้น)
+class _FilterPill extends StatelessWidget {
+  final String label;
   final bool selected;
-  final ValueChanged<bool>? onSelected;
-
-  const _FilterChip({required this.text, this.selected = false, this.onSelected});
+  final VoidCallback? onTap;
+  const _FilterPill({
+    required this.label,
+    this.selected = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(text),
-      selected: selected,
-      onSelected: onSelected,
-      labelStyle: TextStyle(
-        color: selected ? Colors.white : Colors.black87,
-        fontWeight: FontWeight.w700,
+    final borderColor = const Color(0xFF6B5B5B);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(28),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F1F1),                // ✅ พื้นอ่อนเหมือนปุ่มอื่น
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: selected ? Colors.black : borderColor, // ✅ active = ขอบเข้ม
+            width: selected ? 2 : 1.4,                     // ✅ active = ขอบหนาขึ้น
+          ),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w800),
+        ),
       ),
-      selectedColor: Colors.black,
-      backgroundColor: const Color(0xFFEFEFEF),
-      shape: const StadiumBorder(),
     );
   }
 }
@@ -482,115 +352,7 @@ class _Dots extends StatelessWidget {
   }
 }
 
-class _StripTitle extends StatelessWidget {
-  final String text;
-  const _StripTitle({required this.text});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6F6F6),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-    );
-  }
-}
-
-class _Kebab extends StatelessWidget {
-  const _Kebab();
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {},
-      borderRadius: BorderRadius.circular(16),
-      child: const Padding(
-        padding: EdgeInsets.all(6.0),
-        child: Icon(Icons.more_vert, color: Colors.black87),
-      ),
-    );
-  }
-}
-
-class ProductItem {
-  final String title;
-  final double price;
-  final String image; // asset path หรือ http
-  const ProductItem({required this.title, required this.price, required this.image});
-}
-
-class _ProductCardWide extends StatelessWidget {
-  final ProductItem item;
-  const _ProductCardWide({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    final isNet = item.image.startsWith('http');
-    return Padding(
-      padding: const EdgeInsets.only(left: 12, right: 6),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: const [BoxShadow(blurRadius: 8, offset: Offset(0, 3), color: Color(0x14000000))],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.only(topLeft: Radius.circular(14), topRight: Radius.circular(14)),
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: isNet
-                          ? Image.network(item.image, fit: BoxFit.cover)
-                          : Image.asset(item.image, fit: BoxFit.cover),
-                    ),
-                    Positioned(
-                      right: 6,
-                      top: 6,
-                      child: Container(
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(.9), shape: BoxShape.circle),
-                        child: IconButton(
-                          constraints: const BoxConstraints(minHeight: 36, minWidth: 36),
-                          padding: EdgeInsets.zero,
-                          iconSize: 18,
-                          onPressed: () {},
-                          icon: const Icon(Icons.favorite_border),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Row(
-                children: [
-                  Expanded(child: Text(item.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: const Color(0xFFFFEBEE), borderRadius: BorderRadius.circular(20)),
-                    child: Text(
-                      '${item.price.toStringAsFixed(0)}.-  ฿',
-                      style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ===== กริดปุ่มเข้า 4 หน้าแบรนด์ (ใช้รูปแรกของแต่ละแบรนด์) =====
+/// ───────── กริดแบรนด์ 4 ภาพ ─────────
 class _BrandGrid extends StatelessWidget {
   const _BrandGrid();
 
@@ -615,9 +377,9 @@ class _BrandGrid extends StatelessWidget {
           asset: 'assets/images/duex/duex00.jpg',
         ),
         _BrandCardImage(
-          label: 'cintage',
-          route: '/cintage',
-          asset: 'assets/images/cintage/cintage00.jpg',
+          label: 'feelfree',
+          route: '/feelfree',
+          asset: 'assets/images/feelfree/feelfree00.jpg',
         ),
         _BrandCardImage(
           label: 'unigam',
@@ -629,11 +391,10 @@ class _BrandGrid extends StatelessWidget {
   }
 }
 
-// ✅ การ์ดแบรนด์แบบใช้รูปแรกของแต่ละแบรนด์ + กดแล้วไปหน้าแบรนด์
 class _BrandCardImage extends StatelessWidget {
-  final String label; // ชื่อแบรนด์
-  final String route; // เส้นทางไปหน้าแบรนด์
-  final String asset; // รูปแรกของแบรนด์ (assets path)
+  final String label;
+  final String route;
+  final String asset;
 
   const _BrandCardImage({
     super.key,
@@ -657,15 +418,11 @@ class _BrandCardImage extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // รูปพื้นหลังของแบรนด์
               Image.asset(
                 asset,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    const ColoredBox(color: Color(0xFFEFEFEF)),
+                errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFEFEFEF)),
               ),
-
-              // แผงไล่แสง + ชื่อแบรนด์ด้านล่าง
               Align(
                 alignment: Alignment.bottomLeft,
                 child: Container(
@@ -680,26 +437,7 @@ class _BrandCardImage extends StatelessWidget {
                   ),
                   child: Text(
                     label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-
-              // ไอคอนมุมขวาบน
-              Positioned(
-                right: 6,
-                top: 6,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(.92),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Padding(
-                    padding: EdgeInsets.all(4.0),
-                    child: Icon(Icons.favorite_border, size: 16),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
                   ),
                 ),
               ),
@@ -711,61 +449,163 @@ class _BrandCardImage extends StatelessWidget {
   }
 }
 
-// ===== bottom sheet ปุ่มเข้าสู่ระบบ (สไตล์โปร่งดำ + ปุ่มขาวขวา) =====
-class _LoginBottomBar extends StatelessWidget {
-  final VoidCallback onTap;
-  final String message;
-  const _LoginBottomBar({
-    super.key,
-    required this.onTap,
-    this.message = 'ลงชื่อเข้าใช้เพื่อช้อปสะดวกขึ้น',
+class _StripTitle extends StatelessWidget {
+  final String text;
+  const _StripTitle({required this.text});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F6F6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+    );
+  }
+}
+
+class _PromoStrip extends StatelessWidget {
+  const _PromoStrip();
+
+  static const bg = Color(0xFFFFF5E8);
+  static const border = Color(0xFFE9DCCB);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 44,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: border),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: const [
+          _PromoItem(
+            icon: Icons.check,
+            iconColor: Colors.brown,
+            title: 'จัดส่งฟรี',
+            subtitle: 'เมื่อซื้อครบ 290.-',
+          ),
+          VerticalDivider(width: 24, color: border, thickness: 1),
+          _PromoItem(
+            icon: Icons.inventory_2_outlined,
+            iconColor: Colors.brown,
+            title: 'ส่งคืนฟรี',
+            subtitle: 'ไม่พอใจสินค้าส่งคืนได้',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PromoItem extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  const _PromoItem({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(.65), // พื้นหลังโปร่งดำ
-          border: const Border(
-            top: BorderSide(color: Color(0x33FFFFFF), width: .6), // เส้นขาวจางด้านบน
+    return Expanded(
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: iconColor),
+          const SizedBox(width: 6),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.brown)),
+              Text(subtitle, style: const TextStyle(fontSize: 11, height: 1.1, color: Colors.brown)),
+            ],
           ),
-        ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bottom bar
+class _BottomBar extends StatelessWidget {
+  final bool showBadge;
+  final VoidCallback onTapHome, onTapSearch, onTapCart, onTapUser;
+
+  const _BottomBar({
+    super.key,
+    required this.showBadge,
+    required this.onTapHome,
+    required this.onTapSearch,
+    required this.onTapCart,
+    required this.onTapUser,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return BottomAppBar(
+      color: Colors.black.withOpacity(.88),
+      shape: const CircularNotchedRectangle(),
+      notchMargin: 8,
+      child: SizedBox(
+        height: 58,
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            // ข้อความฝั่งซ้าย (สีขาว)
-            Expanded(
-              child: Text(
-                message,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
+            _BarItem(icon: Icons.home_outlined, label: 'หน้าหลัก', onTap: onTapHome),
+            _BarItem(icon: Icons.search, label: 'หมวดหมู่', onTap: onTapSearch),
+
+            const SizedBox(width: 48),
+
+            GestureDetector(
+              onTap: onTapCart,
+              child: SizedBox(
+                width: 72,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(Icons.shopping_cart_outlined, color: Colors.white, size: 22),
+                        if (showBadge)
+                          Positioned(
+                            right: -10, top: -6,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text(
+                                '84',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 1),
+                    const Text('ตะกร้า', style: TextStyle(color: Colors.white, fontSize: 11)),
+                  ],
                 ),
               ),
             ),
 
-            // ปุ่มขาวขอบมนฝั่งขวา
-            ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 40),
-              child: TextButton(
-                onPressed: onTap,
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black87,
-                  shape: const StadiumBorder(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'ลงชื่อเข้าใช้',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
-            ),
+            _BarItem(icon: Icons.person_outline, label: 'ฉัน', onTap: onTapUser),
           ],
         ),
       ),
@@ -773,19 +613,159 @@ class _LoginBottomBar extends StatelessWidget {
   }
 }
 
+class _BarItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _BarItem({required this.icon, required this.label, required this.onTap});
 
-Widget _ghostBtn(String label, VoidCallback onTap) {
-  return InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(20),
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(.35),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white70, width: .7),
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 72,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 22),
+            const SizedBox(height: 2),
+            Text(label, style: const TextStyle(color: Colors.white, fontSize: 11)),
+          ],
+        ),
       ),
-      child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-    ),
-  );
+    );
+  }
+}
+
+/// ───────── พรีวิวบนสุด (เวอร์ชันสั้น/clean) ─────────
+class MiniItem {
+  final String asset;
+  final int price;
+  const MiniItem(this.asset, this.price);
+}
+
+class TopPreviewSimple extends StatelessWidget {
+  final String bg;
+  final MiniItem left;
+  final MiniItem right;
+  final VoidCallback? onMore;
+
+  const TopPreviewSimple({
+    super.key,
+    required this.bg,
+    required this.left,
+    required this.right,
+    this.onMore,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: Stack(
+        children: [
+          Positioned.fill(child: Image.asset(bg, fit: BoxFit.cover)),
+          Positioned.fill(child: ColoredBox(color: Colors.black.withOpacity(.18))),
+          const Positioned(left: 18, top: 12, child: _TrendsHead()), // ⬅ ลด top ลงนิดกันชน
+          Positioned(
+            right: 16, top: 26,
+            child: Row(
+              children: [
+                _MiniCard(item: left),
+                const SizedBox(width: 12),
+                _MiniCard(item: right),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniCard extends StatelessWidget {
+  final MiniItem item;
+  const _MiniCard({required this.item});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 118,
+      height: 160,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(.92),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFDDD1FF), width: 3),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.asset(item.asset, fit: BoxFit.cover),
+            ),
+          ),
+          Positioned(
+            left: 6,
+            bottom: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 4)],
+              ),
+              child: Text('฿${item.price}',
+                  style: const TextStyle(color: Color(0xFFE55A00), fontWeight: FontWeight.w900)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrendsHead extends StatelessWidget {
+  const _TrendsHead();
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: const [
+        _TrendsTag(),
+        SizedBox(height: 5),
+        Text(
+          'สินค้าขายดี', // ✅ เปลี่ยนข้อความ
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,            // ✅ ลดฟอนต์กันทับ
+            fontWeight: FontWeight.w700,
+            shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TrendsTag extends StatelessWidget {
+  const _TrendsTag();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          Icon(Icons.trending_up, size: 18, color: Color(0xFF6C4CFF)),
+          SizedBox(width: 6),
+          Text('trends', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF6C4CFF))),
+        ],
+      ),
+    );
+  }
 }
