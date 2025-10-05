@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
-import '../cart_store.dart'; // ← ปรับ path ให้ตรงกับโปรเจกต์ของคุณ
+import '../cart_store.dart'; // ← ปรับเส้นทางให้ตรงกับโปรเจกต์ของคุณ
 
-class UnigamListPage extends StatelessWidget {
-  const UnigamListPage({super.key});
+class FeelFreeListPage extends StatelessWidget {
+  const FeelFreeListPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     const items = [
-      _UG('Unigam 01', 299, 'assets/images/unigam/uni01.jpg'),
-      _UG('Unigam 02', 299, 'assets/images/unigam/uni02.jpg'),
-      _UG('Unigam 03', 329, 'assets/images/unigam/uni03.jpg'),
+      _CT('feelfree 01', 299, 'assets/images/feelfree/feelfree01.jpg'),
+      _CT('feelfree 02', 319, 'assets/images/feelfree/feelfree02.jpg'),
+      _CT('feelfree 03', 309, 'assets/images/feelfree/feelfree03.jpg'),
     ];
 
     return Scaffold(
       backgroundColor: Colors.white,
-      extendBody: true, // ให้เว้ารับ FAB
+      extendBody: true, // ให้เว้า FAB สวย ๆ
       appBar: AppBar(
-        title: const Text('Unigam', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text('feelfree', style: TextStyle(fontWeight: FontWeight.w700)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -24,7 +24,7 @@ class UnigamListPage extends StatelessWidget {
         centerTitle: true,
       ),
 
-      // FAB “เทรนด์” ตรงกลาง
+      // FAB “เทรนด์” ตรงกลาง (หน้า /trends)
       floatingActionButton: SizedBox(
         width: 64,
         height: 64,
@@ -58,7 +58,7 @@ class UnigamListPage extends StatelessWidget {
         ),
       ),
 
-      // แถบเมนูล่างเหมือนหน้า main
+      // แทบเมนูด้านล่างเหมือนหน้า main
       bottomNavigationBar: _BottomBar(
         showBadge: false,
         onTapHome:  () => Navigator.pushNamed(context, '/'),
@@ -70,15 +70,15 @@ class UnigamListPage extends StatelessWidget {
   }
 }
 
-class _UG {
+class _CT {
   final String title;
   final double price;
-  final String image; // asset path
-  const _UG(this.title, this.price, this.image);
+  final String image;
+  const _CT(this.title, this.price, this.image);
 }
 
 class _ProductCard extends StatelessWidget {
-  final _UG item;
+  final _CT item;
   const _ProductCard({required this.item});
 
   @override
@@ -87,7 +87,9 @@ class _ProductCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(blurRadius: 8, offset: Offset(0, 3), color: Color(0x14000000))],
+        boxShadow: const [
+          BoxShadow(blurRadius: 8, offset: Offset(0, 3), color: Color(0x14000000)),
+        ],
         border: Border.all(color: Color(0xFFF0F0F0)),
       ),
       child: Padding(
@@ -105,6 +107,7 @@ class _ProductCard extends StatelessWidget {
                       child: Image.asset(
                         item.image,
                         fit: BoxFit.cover,
+                        gaplessPlayback: true,
                         errorBuilder: (_, __, ___) =>
                             const Center(child: Icon(Icons.image_not_supported_outlined)),
                       ),
@@ -122,7 +125,7 @@ class _ProductCard extends StatelessWidget {
                         constraints: const BoxConstraints(minHeight: 30, minWidth: 30),
                         padding: EdgeInsets.zero,
                         iconSize: 18,
-                        onPressed: () {}, // TODO: favorite
+                        onPressed: () {}, // favorite ภายหลัง
                         icon: const Icon(Icons.favorite_border),
                       ),
                     ),
@@ -141,7 +144,7 @@ class _ProductCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
 
-            // ราคา + ปุ่มตะกร้า → เพิ่มลงตะกร้า + ไปหน้า /cart
+            // ราคา + ปุ่มตะกร้า → เพิ่มลงรถเข็น + ไปหน้า /cart
             Row(
               children: [
                 Container(
@@ -163,7 +166,7 @@ class _ProductCard extends StatelessWidget {
                 InkWell(
                   borderRadius: BorderRadius.circular(10),
                   onTap: () {
-                    // ✅ เพิ่มสินค้าเข้ารถเข็น + เด้งไปหน้า /cart
+                    // ✅ เพิ่มสินค้าเข้าตะกร้า + เด้งไปหน้า /cart
                     cartStore.add(
                       title: item.title,
                       price: item.price,
@@ -241,10 +244,8 @@ class _BottomBar extends StatelessWidget {
                                 color: Colors.redAccent,
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Text(
-                                '84',
-                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
-                              ),
+                              child: const Text('84',
+                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
                             ),
                           ),
                       ],

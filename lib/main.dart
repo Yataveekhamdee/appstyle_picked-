@@ -3,14 +3,19 @@ import 'package:flutter/material.dart';
 // ===== นำเข้าหน้าต่าง ๆ ของคุณตามเดิม =====
 import '../login_page.dart';
 import '../signup_page.dart';
-import '../change_password_page.dart';
 import '../product_list_page.dart';
 import '../stylish_list_page.dart';
 import '../duex_list_page.dart';
-import '../feelfree_list_page.dart';   // ✅ แก้พาธให้ถูก (../)
+import '../feelfree_list_page.dart';   
 import '../unigam_list_page.dart';
 import '../checkout_page.dart';
 import '../payment_detail_page.dart';
+import '../cart_page.dart';
+import '../trends_page.dart'; 
+import '../address_form_page.dart';
+import '../order_preparing_page.dart';
+import '../account_page.dart';
+import '../product_detail_page.dart';
 
 void main() => runApp(const MyApp());
 
@@ -39,15 +44,20 @@ class MyApp extends StatelessWidget {
       home: const HomePage(),
       routes: {
         '/login': (_) => const LoginPage(),
-        '/signup': (_) => const SignUpPage(),
-        '/forgot': (_) => const ChangePasswordPage(),
+        '/signup': (_) => const SignupPage(),
         '/products': (_) => const ProductListPage(),
         '/stylish': (_) => const StylishListPage(),
         '/duex': (_) => const DuexListPage(),
-        '/feelfree': (_) => const FeelFreeListPage(), // ✅ ใช้ชื่อคลาสที่ถูก
+        '/feelfree': (_) => const FeelFreeListPage(), 
         '/unigam': (_) => const UnigamListPage(),
         '/checkout': (_) => const CheckoutPage(),
         '/paymentDetail': (_) => const PaymentDetailPage(),
+        '/cart': (_) => const CartPage(),
+        '/trends': (_) => const TrendsPage(), 
+        '/address': (_) => const AddressFormPage(),
+        '/orderPreparing': (_) => const OrderPreparingPage(),
+        '/account': (_) => const AccountPage(),
+        
       },
     );
   }
@@ -82,7 +92,7 @@ class _HomePageState extends State<HomePage> {
         width: 64,
         height: 64,
         child: FloatingActionButton(
-          onPressed: () {},
+          onPressed: () => Navigator.pushNamed(context, '/trends'),
           shape: const CircleBorder(),
           backgroundColor: const Color(0xFF7B57FF),
           foregroundColor: Colors.white,
@@ -109,11 +119,10 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(width: 2), // เว้นระยะเล็กน้อยแทนปุ่มเมนู
                     const Expanded(child: _SearchField()),
                     const SizedBox(width: 8),
-                    _roundIcon(Icons.shopping_cart_outlined, onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('ไปตะกร้า')),
-                      );
-                    }),
+                    _roundIcon(
+                      Icons.shopping_cart_outlined,
+                      onTap: () => Navigator.pushNamed(context, '/cart'), // ⬅️ กดแล้วไปตะกร้า
+                    ),
                   ],
                 ),
               ),
@@ -226,11 +235,7 @@ class _HomePageState extends State<HomePage> {
         showBadge: false,
         onTapHome: () {},
         onTapSearch: () => Navigator.pushNamed(context, '/products'),
-        onTapCart: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('ไปตะกร้า')),
-          );
-        },
+        onTapCart: () => Navigator.pushNamed(context, '/cart'), // ⬅️ กดแล้วไปตะกร้า
         onTapUser: () => Navigator.pushNamed(context, '/login'),
       ),
     );
@@ -299,11 +304,11 @@ class _FilterPill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFFF1F1F1),                // ✅ พื้นอ่อนเหมือนปุ่มอื่น
+          color: const Color(0xFFF1F1F1),
           borderRadius: BorderRadius.circular(28),
           border: Border.all(
-            color: selected ? Colors.black : borderColor, // ✅ active = ขอบเข้ม
-            width: selected ? 2 : 1.4,                     // ✅ active = ขอบหนาขึ้น
+            color: selected ? Colors.black : borderColor,
+            width: selected ? 2 : 1.4,
           ),
         ),
         child: Text(
@@ -669,7 +674,7 @@ class TopPreviewSimple extends StatelessWidget {
         children: [
           Positioned.fill(child: Image.asset(bg, fit: BoxFit.cover)),
           Positioned.fill(child: ColoredBox(color: Colors.black.withOpacity(.18))),
-          const Positioned(left: 18, top: 12, child: _TrendsHead()), // ⬅ ลด top ลงนิดกันชน
+          const Positioned(left: 18, top: 12, child: _TrendsHead()),
           Positioned(
             right: 16, top: 26,
             child: Row(
@@ -738,10 +743,10 @@ class _TrendsHead extends StatelessWidget {
         _TrendsTag(),
         SizedBox(height: 5),
         Text(
-          'สินค้าขายดี', // ✅ เปลี่ยนข้อความ
+          'สินค้าขายดี',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 18,            // ✅ ลดฟอนต์กันทับ
+            fontSize: 18,
             fontWeight: FontWeight.w700,
             shadows: [Shadow(blurRadius: 4, color: Colors.black45)],
           ),
@@ -769,3 +774,4 @@ class _TrendsTag extends StatelessWidget {
     );
   }
 }
+
