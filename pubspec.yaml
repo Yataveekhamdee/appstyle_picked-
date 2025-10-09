@@ -33,9 +33,7 @@ dependencies:
 
   firebase_core: ^2.15.1        # สำหรับเชื่อมต่อกับ Firebase
   firebase_auth: ^4.8.0        # สำหรับการยืนยันตัวตนของผู้ใช้
-  cloud_firestore: ^4.9.1      # สำหรับการเชื่อมต่อกับ Firestore
-  
-
+  cloud_firestore: ^4.9.1      # สำหรับการเชื่อมต่อกับ Firestore 
   # State management
   provider: ^6.0.0             # สำหรับการจัดการสถานะของแอปพลิเคชัน
 

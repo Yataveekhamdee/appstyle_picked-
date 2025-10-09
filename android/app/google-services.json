@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "639385732948",
-    "project_id": "flutter-educate-7b8bf",
-    "storage_bucket": "flutter-educate-7b8bf.appspot.com"
+    "project_number": "433207957549",
+    "project_id": "appstyle-picked",
+    "storage_bucket": "appstyle-picked.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:639385732948:android:8b0c5cdc4581409f4feac1",
+        "mobilesdk_app_id": "1:433207957549:android:50db73b804284fcd6780a4",
         "android_client_info": {
           "package_name": "com.example.projectapp"
         }
@@ -15,7 +15,26 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBfckpP6h6luIJ5HhlWP-Tv7Pi7bUn2Zwk"
+          "current_key": "AIzaSyCnE7_CAC5vxMw0uPYfjEB2uEHSVVh4znQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:433207957549:android:c03b6d63f4b65cff6780a4",
+        "android_client_info": {
+          "package_name": "com.yourcompany.stylepicked"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCnE7_CAC5vxMw0uPYfjEB2uEHSVVh4znQ"
         }
       ],
       "services": {
