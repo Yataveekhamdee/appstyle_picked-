@@ -1,0 +1,127 @@
+{
+  "products": [
+    {
+      "name": "Stylish 01",
+      "brand": "stylish",
+      "category": "เสื้อผ้า",
+      "price": 250,
+      "stock": 50,
+      "image": "assets/images/stylish/stylish01.jpg",
+      "description": "เสื้อผ้าสไตล์สวยงาม ใส่สบาย",
+      "updatedAt": "2024-01-15T10:00:00Z",
+      "createdAt": "2024-01-01T10:00:00Z"
+    },
+    {
+      "name": "Duex 01",
+      "brand": "duex",
+      "category": "เสื้อผ้า",
+      "price": 299,
+      "stock": 30,
+      "image": "assets/images/duex/duex01.jpg",
+      "description": "เสื้อผ้าแบรนด์ Duex คุณภาพดี",
+      "updatedAt": "2024-01-14T10:00:00Z",
+      "createdAt": "2024-01-02T10:00:00Z"
+    },
+    {
+      "name": "Feelfree 01",
+      "brand": "feelfree",
+      "category": "เสื้อผ้า",
+      "price": 299,
+      "stock": 40,
+      "image": "assets/images/feelfree/feelfree01.jpg",
+      "description": "เสื้อผ้าใส่สบาย รู้สึกอิสระ",
+      "updatedAt": "2024-01-13T10:00:00Z",
+      "createdAt": "2024-01-03T10:00:00Z"
+    },
+    {
+      "name": "Feelfree 02",
+      "brand": "feelfree",
+      "category": "เสื้อผ้า",
+      "price": 319,
+      "stock": 25,
+      "image": "assets/images/feelfree/feelfree02.jpg",
+      "description": "เสื้อผ้า Feelfree รุ่นใหม่",
+      "updatedAt": "2024-01-12T10:00:00Z",
+      "createdAt": "2024-01-04T10:00:00Z"
+    },
+    {
+      "name": "Feelfree 03",
+      "brand": "feelfree",
+      "category": "เสื้อผ้า",
+      "price": 309,
+      "stock": 35,
+      "image": "assets/images/feelfree/feelfree03.jpg",
+      "description": "เสื้อผ้า Feelfree สีสันสดใส",
+      "updatedAt": "2024-01-11T10:00:00Z",
+      "createdAt": "2024-01-05T10:00:00Z"
+    },
+    {
+      "name": "Unigam 01",
+      "brand": "unigam",
+      "category": "เสื้อผ้า",
+      "price": 299,
+      "stock": 45,
+      "image": "assets/images/unigam/uni01.jpg",
+      "description": "เสื้อผ้า Unigam ดีไซน์ทันสมัย",
+      "updatedAt": "2024-01-10T10:00:00Z",
+      "createdAt": "2024-01-06T10:00:00Z"
+    },
+    {
+      "name": "Unigam 02",
+      "brand": "unigam",
+      "category": "เสื้อผ้า",
+      "price": 299,
+      "stock": 20,
+      "image": "assets/images/unigam/uni02.jpg",
+      "description": "เสื้อผ้า Unigam ทรงสวย",
+      "updatedAt": "2024-01-09T10:00:00Z",
+      "createdAt": "2024-01-07T10:00:00Z"
+    },
+    {
+      "name": "Unigam 03",
+      "brand": "unigam",
+      "category": "เสื้อผ้า",
+      "price": 329,
+      "stock": 15,
+      "image": "assets/images/unigam/uni03.jpg",
+      "description": "เสื้อผ้า Unigam พรีเมียม",
+      "updatedAt": "2024-01-08T10:00:00Z",
+      "createdAt": "2024-01-08T10:00:00Z"
+    }
+  ],
+  "categories": [
+    {
+      "name": "เสื้อผ้า",
+      "description": "เสื้อผ้าแฟชั่นสำหรับทุกโอกาส",
+      "updatedAt": "2024-01-01T10:00:00Z",
+      "createdAt": "2024-01-01T10:00:00Z"
+    }
+  ],
+  "brands": [
+    {
+      "name": "stylish",
+      "description": "แบรนด์เสื้อผ้าสไตล์สวยงาม",
+      "updatedAt": "2024-01-01T10:00:00Z",
+      "createdAt": "2024-01-01T10:00:00Z"
+    },
+    {
+      "name": "duex",
+      "description": "แบรนด์เสื้อผ้าคุณภาพดี",
+      "updatedAt": "2024-01-01T10:00:00Z",
+      "createdAt": "2024-01-01T10:00:00Z"
+    },
+    {
+      "name": "feelfree",
+      "description": "แบรนด์เสื้อผ้าใส่สบาย",
+      "updatedAt": "2024-01-01T10:00:00Z",
+      "createdAt": "2024-01-01T10:00:00Z"
+    },
+    {
+      "name": "unigam",
+      "description": "แบรนด์เสื้อผ้าดีไซน์ทันสมัย",
+      "updatedAt": "2024-01-01T10:00:00Z",
+      "createdAt": "2024-01-01T10:00:00Z"
+    }
+  ]
+}
+

@@ -42,6 +42,9 @@ dependencies:
   cupertino_icons: ^1.0.0      # ไอคอนแบบ iOS
   firebase_storage: ^11.6.0
   image_picker: ^1.0.7
+  # cached_network_image: ^3.3.0  # มี compatibility issues
+  flutter_cache_manager: ^3.3.1
+  http: ^1.1.0  # สำหรับ load image bytes
   
 
 

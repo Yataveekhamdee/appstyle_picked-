@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 
 // pages
@@ -8,12 +9,17 @@ import 'pages/auth/signup_page.dart';
 import 'pages/auth/account_page.dart';
 
 import 'pages/products/product_list_page.dart';
-import 'pages/products/product_detail_page.dart';
-import 'pages/products/stylish_list_page.dart';
-import 'pages/products/duex_list_page.dart';
-import 'pages/products/feelfree_list_page.dart';
-import 'pages/products/unigam_list_page.dart';
+import 'pages/products/brand_list_page.dart';
 import 'pages/products/trends_page.dart';
+
+import 'pages/admin/admin_dashboard.dart';
+import 'pages/admin/admin_login_page.dart';
+import 'pages/admin/category_management_page.dart';
+import 'pages/admin/brand_management_page.dart';
+import 'pages/admin/admin_analytics_dashboard.dart';
+import 'pages/admin/product_management_page.dart';
+import 'pages/admin/admin_management_page.dart';
+import 'pages/admin/admin_collection_setup_page.dart';
 
 import 'pages/cart/cart_page.dart';
 import 'pages/cart/checkout_page.dart';
@@ -21,6 +27,16 @@ import 'pages/cart/order_preparing_page.dart';
 import 'pages/cart/payment_detail_page.dart';
 
 import 'pages/address/address_form_page.dart';
+
+// providers
+import 'providers/cart_store.dart';
+import 'providers/product_provider.dart';
+import 'providers/admin_auth_provider.dart';
+import 'providers/brand_provider.dart';
+import 'providers/category_provider.dart';
+
+// models
+import 'models/brand_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,32 +51,45 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Style Picked',
-      themeMode: ThemeMode.light,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.light,
-        colorScheme:
-            ColorScheme.fromSeed(seedColor: Colors.black).copyWith(primary: Colors.black),
-        scaffoldBackgroundColor: Colors.white,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
+        return MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => cartStore),
+            ChangeNotifierProvider(create: (_) => ProductProvider()),
+            ChangeNotifierProvider(create: (_) => AdminAuthProvider()),
+            ChangeNotifierProvider(create: (_) => BrandProvider()),
+            ChangeNotifierProvider(create: (_) => CategoryProvider()),
+          ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Style Picked',
+        themeMode: ThemeMode.light,
+        theme: ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.light,
+          colorScheme:
+              ColorScheme.fromSeed(seedColor: Colors.black).copyWith(primary: Colors.black),
+          scaffoldBackgroundColor: Colors.white,
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+          ),
         ),
-      ),
-      home: const HomePage(),
+        home: const HomePage(),
       routes: {
         '/login': (_) => const LoginPage(),
         '/signup': (_) => const SignupPage(),
         '/products': (_) => const ProductListPage(),
-        '/stylish': (_) => const StylishListPage(),
-        '/duex': (_) => const DuexListPage(),
-        '/feelfree': (_) => const FeelFreeListPage(),
-        '/unigam': (_) => const UnigamListPage(),
+        '/stylish': (_) => const BrandListPage(brandName: 'stylish'),
+        '/duex': (_) => const BrandListPage(brandName: 'duex'),
+        '/feelfree': (_) => const BrandListPage(brandName: 'feelfree'),
+        '/unigam': (_) => const BrandListPage(brandName: 'unigam'),
+        '/brands/': (context) {
+          final brandName = ModalRoute.of(context)!.settings.arguments as String? ?? 'stylish';
+          print('Debug Route Handler - Brand Name: $brandName');
+          return BrandListPage(brandName: brandName);
+        },
         '/checkout': (_) => const CheckoutPage(),
         '/paymentDetail': (_) => const PaymentDetailPage(),
         '/cart': (_) => const CartPage(),
@@ -68,8 +97,17 @@ class MyApp extends StatelessWidget {
         '/address': (_) => const AddressFormPage(),
         '/orderPreparing': (_) => const OrderPreparingPage(),
         '/account': (_) => const AccountPage(),
+              '/admin': (_) => const AdminDashboard(),
+              '/admin/login': (_) => const AdminLoginPage(),
+              '/admin/analytics': (_) => const AdminAnalyticsDashboard(),
+              '/admin/products': (_) => const ProductManagementPage(),
+              '/admin/categories': (_) => const CategoryManagementPage(),
+              '/admin/brands': (_) => const BrandManagementPage(),
+              '/admin/management': (_) => const AdminManagementPage(),
+              '/admin/setup': (_) => const AdminCollectionSetupPage(),
         // '/productDetail': (_) => const ProductDetailPage(),
-      },
+        },
+      ),
     );
   }
 }
@@ -86,6 +124,17 @@ class _HomePageState extends State<HomePage> {
 
   // ฟิลเตอร์ใต้ช่องค้นหา
   final _filters = const ['See All', 'stylish', 'duex', 'feelfree', 'unigam'];
+
+  @override
+  void initState() {
+    super.initState();
+    // โหลดข้อมูลจาก Firebase เมื่อหน้าโหลด
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProductProvider>().loadProducts();
+      context.read<BrandProvider>().loadBrands();
+      context.read<CategoryProvider>().loadCategories();
+    });
+  }
 
   @override
   void dispose() {
@@ -173,11 +222,30 @@ class _HomePageState extends State<HomePage> {
 
             // ===== พรีวิวด้านบนสุด =====
             SliverToBoxAdapter(
-              child: TopPreviewSimple(
-                bg: 'assets/images/unigam/uni04.jpg',
-                left: MiniItem('assets/images/duex/duex01.jpg', 299),
-                right: MiniItem('assets/images/feelfree/feelfree03.jpg', 309),
-                onMore: () {},
+              child: Consumer<ProductProvider>(
+                builder: (context, productProvider, child) {
+                  final trendingProducts = productProvider.getTrendingProducts(limit: 3);
+                  
+                  if (trendingProducts.isEmpty) {
+                    return TopPreviewSimple(
+                      bg: 'assets/images/unigam/uni04.jpg',
+                      left: MiniItem('assets/images/duex/duex01.jpg', 299),
+                      right: MiniItem('assets/images/feelfree/feelfree03.jpg', 309),
+                      onMore: () {},
+                    );
+                  }
+                  
+                  return TopPreviewSimple(
+                    bg: trendingProducts.length > 0 ? trendingProducts[0].image : 'assets/images/unigam/uni04.jpg',
+                    left: trendingProducts.length > 1 
+                        ? MiniItem(trendingProducts[1].image, trendingProducts[1].price.toInt())
+                        : MiniItem('assets/images/duex/duex01.jpg', 299),
+                    right: trendingProducts.length > 2 
+                        ? MiniItem(trendingProducts[2].image, trendingProducts[2].price.toInt())
+                        : MiniItem('assets/images/feelfree/feelfree03.jpg', 309),
+                    onMore: () {},
+                  );
+                },
               ),
             ),
 
@@ -195,10 +263,47 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    _StripTitle(text: 'Brands'),
-                    SizedBox(height: 10),
-                    _BrandGrid(),
+                  children: [
+                    const _StripTitle(text: 'Brands'),
+                    const SizedBox(height: 10),
+                    Consumer<BrandProvider>(
+                      builder: (context, brandProvider, child) {
+                        if (brandProvider.isLoading) {
+                          return Container(
+                            height: 200,
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        }
+                        
+                        if (brandProvider.error != null) {
+                          return Container(
+                            height: 200,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.error, color: Colors.red[300], size: 48),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'ไม่สามารถโหลดข้อมูลแบรนด์ได้',
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ElevatedButton(
+                                    onPressed: () => brandProvider.loadBrands(),
+                                    child: const Text('ลองใหม่'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        
+                        return const _BrandGrid();
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -373,35 +478,61 @@ class _BrandGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: 1.35,
-      children: const [
-        _BrandCardImage(
-          label: 'stylish',
-          route: '/stylish',
-          asset: 'assets/images/stylish/stylish00.jpg',
-        ),
-        _BrandCardImage(
-          label: 'duex',
-          route: '/duex',
-          asset: 'assets/images/duex/duex00.jpg',
-        ),
-        _BrandCardImage(
-          label: 'feelfree',
-          route: '/feelfree',
-          asset: 'assets/images/feelfree/feelfree00.jpg',
-        ),
-        _BrandCardImage(
-          label: 'unigam',
-          route: '/unigam',
-          asset: 'assets/images/unigam/uni00.jpg',
-        ),
-      ],
+    return Consumer<BrandProvider>(
+      builder: (context, brandProvider, child) {
+        final brands = brandProvider.brands;
+        
+        // ถ้ายังไม่โหลดข้อมูล ให้แสดง loading หรือ fallback
+        if (brands.isEmpty) {
+          return GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 1.35,
+            children: const [
+              _BrandCardImage(
+                label: 'stylish',
+                route: '/stylish',
+                asset: 'assets/images/stylish/stylish00.jpg',
+              ),
+              _BrandCardImage(
+                label: 'duex',
+                route: '/duex',
+                asset: 'assets/images/duex/duex00.jpg',
+              ),
+              _BrandCardImage(
+                label: 'feelfree',
+                route: '/feelfree',
+                asset: 'assets/images/feelfree/feelfree00.jpg',
+              ),
+              _BrandCardImage(
+                label: 'unigam',
+                route: '/unigam',
+                asset: 'assets/images/unigam/uni00.jpg',
+              ),
+            ],
+          );
+        }
+        
+        // แสดงแบรนด์จาก Firebase (จำกัด 4 แบรนด์แรก)
+        final displayBrands = brands.take(4).toList();
+        
+        return GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1.35,
+          children: displayBrands.map((brand) => 
+            _BrandCardFirebase(
+              brand: brand,
+            )
+          ).toList(),
+        );
+      },
     );
   }
 }
@@ -456,6 +587,100 @@ class _BrandCardImage extends StatelessWidget {
                   ),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BrandCardFirebase extends StatelessWidget {
+  final Brand brand;
+
+  const _BrandCardFirebase({
+    super.key,
+    required this.brand,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        print('Debug _BrandCardFirebase - Clicked brand: ${brand.name}');
+        Navigator.pushNamed(
+          context, 
+          '/brands/',
+          arguments: brand.name,
+        );
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: Ink(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.black, width: 1.2),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(13),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // รูปภาพแบรนด์
+              brand.logo != null && brand.logo!.isNotEmpty
+                  ? (brand.logo!.startsWith('http')
+                      ? Image.network(
+                          brand.logo!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFEFEFEF)),
+                        )
+                      : Image.asset(
+                          brand.logo!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFEFEFEF)),
+                        ))
+                  : const ColoredBox(color: Color(0xFFEFEFEF)),
+              
+              // ชื่อแบรนด์
+              Align(
+                alignment: Alignment.bottomLeft,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [Color(0xB3000000), Color(0x33000000), Colors.transparent],
+                    ),
+                  ),
+                  child: Text(
+                    brand.name,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+              
+              // สถานะแบรนด์
+              if (!brand.isActive)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'ปิดใช้งาน',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -687,7 +912,11 @@ class TopPreviewSimple extends StatelessWidget {
       aspectRatio: 16 / 9,
       child: Stack(
         children: [
-          Positioned.fill(child: Image.asset(bg, fit: BoxFit.cover)),
+          Positioned.fill(
+            child: bg.startsWith('http')
+                ? Image.network(bg, fit: BoxFit.cover)
+                : Image.asset(bg, fit: BoxFit.cover),
+          ),
           Positioned.fill(child: ColoredBox(color: Colors.black.withOpacity(.18))),
           const Positioned(left: 18, top: 12, child: _TrendsHead()),
           Positioned(
@@ -726,7 +955,9 @@ class _MiniCard extends StatelessWidget {
           Positioned.fill(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(6),
-              child: Image.asset(item.asset, fit: BoxFit.cover),
+              child: item.asset.startsWith('http')
+                  ? Image.network(item.asset, fit: BoxFit.cover)
+                  : Image.asset(item.asset, fit: BoxFit.cover),
             ),
           ),
           Positioned(

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../providers/cart_store.dart';
-import '../../services/firestore_service.dart';
+import '../../providers/product_provider.dart';
+import '../../providers/brand_provider.dart';
+import '../../models/product_model.dart';
+import '../../widgets/simple_network_image_widget.dart';
 
 class ProductListPage extends StatefulWidget {
   const ProductListPage({super.key});
@@ -9,33 +13,56 @@ class ProductListPage extends StatefulWidget {
 }
 
 class _ProductListPageState extends State<ProductListPage> {
-  // รายชื่อแบรนด์ (แท็บฝั่งซ้าย)
-  final filters = const ['See All', 'stylish', 'duex', 'feelfree', 'unigam'];
   int selected = 0;
 
-  // สินค้าทั้งหมด
-  static const List<_PL> _allItems = [
-    _PL('Stylish 01', 250, 'assets/images/stylish/stylish01.jpg', 'stylish'),
-    _PL('Duex 01', 299, 'assets/images/duex/duex01.jpg', 'duex'),
-    _PL('feelfree 01', 299, 'assets/images/feelfree/feelfree01.jpg', 'feelfree'),
-    _PL('feelfree 02', 319, 'assets/images/feelfree/feelfree02.jpg', 'feelfree'),
-    _PL('feelfree 03', 309, 'assets/images/feelfree/feelfree03.jpg', 'feelfree'),
-    _PL('Unigam 01', 299, 'assets/images/unigam/uni01.jpg', 'unigam'),
-    _PL('Unigam 02', 299, 'assets/images/unigam/uni02.jpg', 'unigam'),
-    _PL('Unigam 03', 329, 'assets/images/unigam/uni03.jpg', 'unigam'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // โหลดสินค้าและแบรนด์จาก Firebase เมื่อหน้าโหลด
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProductProvider>().loadProducts();
+      context.read<BrandProvider>().loadBrands();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final visibleItems = selected == 0
-        ? _allItems
-        : _allItems.where((e) => e.brand == filters[selected]).toList();
+    return Consumer2<ProductProvider, BrandProvider>(
+      builder: (context, productProvider, brandProvider, child) {
+        // สร้างรายการแบรนด์จาก Firebase
+        final filters = ['See All', ...brandProvider.activeBrands.map((brand) => brand.name)];
+        final visibleItems = productProvider.filteredProducts;
 
-    // กำหนดจำนวนคอลัมน์ตามความกว้างหน้าจอ
-    final width = MediaQuery.of(context).size.width;
-    final cols = width >= 900 ? 4 : width >= 600 ? 3 : 2;
+        // กำหนดจำนวนคอลัมน์ตามความกว้างหน้าจอ
+        final width = MediaQuery.of(context).size.width;
+        final cols = width >= 900 ? 4 : width >= 600 ? 3 : 2;
 
-    return Scaffold(
+        if (productProvider.isLoading) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('สินค้า')),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (productProvider.error != null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('สินค้า')),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('เกิดข้อผิดพลาด: ${productProvider.error}'),
+                  ElevatedButton(
+                    onPressed: () => productProvider.loadProducts(),
+                    child: const Text('ลองใหม่'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Scaffold(
       extendBody: true,
       backgroundColor: const Color(0xFFF7F7F7),
 
@@ -98,7 +125,10 @@ class _ProductListPageState extends State<ProductListPage> {
                         final isSel = i == selected;
                         return InkWell(
                           borderRadius: BorderRadius.circular(10),
-                          onTap: () => setState(() => selected = i),
+                          onTap: () {
+                            setState(() => selected = i);
+                            productProvider.filterByBrand(filters[i]);
+                          },
                           child: Container(
                             margin: const EdgeInsets.symmetric(horizontal: 8),
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -134,7 +164,7 @@ class _ProductListPageState extends State<ProductListPage> {
                         childAspectRatio: .72,
                       ),
                       itemCount: visibleItems.length,
-                      itemBuilder: (_, i) => _ProductCard(item: visibleItems[i]),
+                      itemBuilder: (_, i) => _ProductCard(product: visibleItems[i]),
                     ),
                   ),
                 ],
@@ -144,14 +174,16 @@ class _ProductListPageState extends State<ProductListPage> {
         ),
       ),
 
-      // แทบเมนูล่างเหมือนหน้า Home
-      bottomNavigationBar: _BottomBar(
-        showBadge: false,
-        onTapHome: () => Navigator.pushNamed(context, '/'),
-        onTapSearch: () => Navigator.pushNamed(context, '/products'),
-        onTapCart: () => Navigator.pushNamed(context, '/cart'),
-        onTapUser: () => Navigator.pushNamed(context, '/login'),
-      ),
+          // แทบเมนูล่างเหมือนหน้า Home
+          bottomNavigationBar: _BottomBar(
+            showBadge: false,
+            onTapHome: () => Navigator.pushNamed(context, '/'),
+            onTapSearch: () => Navigator.pushNamed(context, '/products'),
+            onTapCart: () => Navigator.pushNamed(context, '/cart'),
+            onTapUser: () => Navigator.pushNamed(context, '/login'),
+          ),
+        );
+      },
     );
   }
 
@@ -196,19 +228,10 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-/// ===== Model =====
-class _PL {
-  final String title;
-  final double price;
-  final String image; // asset path
-  final String brand; // stylish | duex | feelfree | unigam
-  const _PL(this.title, this.price, this.image, this.brand);
-}
-
 /// ===== Card สินค้า =====
 class _ProductCard extends StatelessWidget {
-  final _PL item;
-  const _ProductCard({required this.item});
+  final Product product;
+  const _ProductCard({required this.product});
 
   @override
   Widget build(BuildContext context) {
@@ -229,11 +252,9 @@ class _ProductCard extends StatelessWidget {
               child: Stack(
                 children: [
                   Positioned.fill(
-                    child: Image.asset(
-                      item.image,
+                    child: SimpleSmartImageWidget(
+                      imageUrl: product.image,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          const Center(child: Icon(Icons.image_not_supported_outlined)),
                     ),
                   ),
                   // ปุ่มหัวใจ
@@ -263,9 +284,9 @@ class _ProductCard extends StatelessWidget {
                       onTap: () {
                         // ➜ เพิ่มลง cart 1 ชิ้น แล้วพาไปหน้าตะกร้า
                         cartStore.add(
-                          title: item.title,
-                          price: item.price,
-                          image: item.image,
+                          title: product.name,
+                          price: product.price,
+                          image: product.image,
                           qty: 1,
                         );
                         Navigator.pushNamed(context, '/cart');
@@ -291,10 +312,31 @@ class _ProductCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.title,
+                  Text(product.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  // แสดงชื่อแบรนด์
+                  if (product.brandName != null)
+                    Text(
+                      product.brandName!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  // แสดงชื่อหมวดหมู่
+                  if (product.categoryName != null)
+                    Text(
+                      product.categoryName!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey,
+                      ),
+                    ),
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -303,7 +345,7 @@ class _ProductCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      '฿${item.price.toStringAsFixed(0)}',
+                      '฿${product.price.toStringAsFixed(0)}',
                       style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w900),
                     ),
                   ),

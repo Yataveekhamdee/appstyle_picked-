@@ -1,0 +1,161 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin(email) {
+      return email in [
+        'admin@stylepicked.com',
+        'admin@gmail.com',
+        'anucha.suks@gmail.com',
+        'yatawikhadi@gmail.com'
+      ];
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isValidSize() {
+      return request.resource.size < 10 * 1024 * 1024; // 10MB
+    }
+
+    // Products (Admin only for write/delete, public read)
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize();
+      allow delete: if isAuthenticated()
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Brands (Admin only for write/delete, public read)
+    match /brands/{brandId} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize();
+      allow delete: if isAuthenticated()
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Categories (Admin only for write/delete, public read)
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize();
+      allow delete: if isAuthenticated()
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Users (Owner only for write/delete, public read for profile images)
+    match /users/{userId} {
+      allow read: if true;
+      allow write, delete: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        isAdmin(request.auth.token.email)
+      ) && isImage() && isValidSize();
+    }
+
+    // Thumbnails (Public read, Admin write/delete)
+    match /thumbnails/{thumbnailId} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize();
+      allow delete: if isAuthenticated()
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Temp files (Admin write/delete, no public read)
+    match /temp/{fileId} {
+      allow read: if false;
+      allow write, delete: if isAuthenticated()
+                             && isAdmin(request.auth.token.email)
+                             && isValidSize();
+    }
+
+    // Backups (Admin only)
+    match /backups/{fileId} {
+      allow read, write, delete: if isAuthenticated()
+                                   && isAdmin(request.auth.token.email);
+    }
+
+    // Analytics (Admin only)
+    match /analytics/{fileId} {
+      allow read, write, delete: if isAuthenticated()
+                                   && isAdmin(request.auth.token.email);
+    }
+
+    // Banners (Admin only for write/delete, public read)
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize();
+      allow delete: if isAuthenticated()
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Promotions (Admin only for write/delete, public read)
+    match /promotions/{promoId} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize();
+      allow delete: if isAuthenticated()
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Orders (Admin write/delete, authenticated user read for their own orders)
+    match /orders/{orderId}/{fileId} {
+      allow read: if isAuthenticated() && (
+        resource.metadata.userId == request.auth.uid ||
+        isAdmin(request.auth.token.email)
+      );
+      allow write: if isAuthenticated()
+                     && isAdmin(request.auth.token.email)
+                     && isValidSize();
+      allow delete: if isAuthenticated()
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Reviews (Public read, authenticated user write/delete for their own reviews)
+    match /reviews/{reviewId}/images/{imageId} {
+      allow read: if true;
+      allow write, delete: if isAuthenticated() && (
+        resource.name.matches('.*_' + request.auth.uid + '_.*') ||
+        isAdmin(request.auth.token.email)
+      ) && isImage() && isValidSize();
+    }
+
+    // Support (Authenticated user write/delete for their own support tickets, Admin read/write/delete)
+    match /support/{ticketId}/{fileId} {
+      allow read: if isAuthenticated() && (
+        resource.metadata.userId == request.auth.uid ||
+        isAdmin(request.auth.token.email)
+      );
+      allow write, delete: if isAuthenticated() && (
+        request.auth.uid == resource.metadata.userId ||
+        isAdmin(request.auth.token.email)
+      ) && isValidSize();
+    }
+
+    // Default rule - deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
