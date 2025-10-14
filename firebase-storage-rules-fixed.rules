@@ -1,0 +1,118 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules (แก้ไขแล้ว)
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Function to check if user is admin
+    function isAdmin(email) {
+      return email in [
+        'admin@stylepicked.com',
+        'admin@gmail.com',
+        'anucha.suks@gmail.com',
+        'yatawikhadi@gmail.com'
+      ];
+    }
+
+    // Function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Function to check if file is image
+    function isImage() {
+      return resource.contentType.matches('image/.*');
+    }
+
+    // Function to check file size (max 10MB)
+    function isValidSize() {
+      return resource.size < 10 * 1024 * 1024; // 10MB
+    }
+
+    // Function to check file name format
+    function isValidFileName() {
+      return resource.name.matches('.*\\.(jpg|jpeg|png|gif|webp)');
+    }
+
+    // Products images - Read for all, Write for admins only
+    match /products/{productId} {
+      allow read: if true; // ทุกคนสามารถดูรูปสินค้าได้
+      allow write: if isAuthenticated() 
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize()
+                     && isValidFileName();
+      allow delete: if isAuthenticated() 
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Brand logos - Read for all, Write for admins only
+    match /brands/{brandId} {
+      allow read: if true; // ทุกคนสามารถดูโลโก้แบรนด์ได้
+      allow write: if isAuthenticated() 
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize()
+                     && isValidFileName();
+      allow delete: if isAuthenticated() 
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Category images - Read for all, Write for admins only
+    match /categories/{categoryId} {
+      allow read: if true; // ทุกคนสามารถดูรูปหมวดหมู่ได้
+      allow write: if isAuthenticated() 
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize()
+                     && isValidFileName();
+      allow delete: if isAuthenticated() 
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // User images - Read/Write for authenticated users only
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId || // เจ้าของรูป
+        isAdmin(request.auth.token.email) // Admin
+      );
+      allow write: if isAuthenticated() 
+                     && request.auth.uid == userId
+                     && isImage()
+                     && isValidSize()
+                     && isValidFileName();
+      allow delete: if isAuthenticated() && (
+        request.auth.uid == userId || // เจ้าของรูป
+        isAdmin(request.auth.token.email) // Admin
+      );
+    }
+
+    // Thumbnails - Read for all, Write for admins only
+    match /thumbnails/{thumbnailId} {
+      allow read: if true; // ทุกคนสามารถดู thumbnail ได้
+      allow write: if isAuthenticated() 
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize()
+                     && isValidFileName();
+      allow delete: if isAuthenticated() 
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Temp files - For temporary uploads
+    match /temp/{tempId} {
+      allow read, write: if isAuthenticated() 
+                           && isAdmin(request.auth.token.email);
+    }
+
+    // Default rule - Deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+
+
+
+

@@ -1,0 +1,180 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin(email) {
+      return email in [
+        'admin@stylepicked.com',
+        'admin@gmail.com',
+        'anucha.suks@gmail.com',
+        'yatawikhadi@gmail.com'
+      ];
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isValidSize() {
+      return request.resource.size < 10 * 1024 * 1024; // 10MB
+    }
+
+    // Products (Public read for all, Admin write/delete)
+    match /products/{productId} {
+      // Allow public read access - no authentication required
+      allow read: if true;
+      // Admin write/delete
+      allow write: if isAuthenticated()
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize();
+      allow delete: if isAuthenticated()
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Brands (Public read for all, Admin write/delete)
+    match /brands/{brandId} {
+      // Allow public read access - no authentication required
+      allow read: if true;
+      // Admin write/delete
+      allow write: if isAuthenticated()
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize();
+      allow delete: if isAuthenticated()
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Categories (Public read for all, Admin write/delete)
+    match /categories/{categoryId} {
+      // Allow public read access - no authentication required
+      allow read: if true;
+      // Admin write/delete
+      allow write: if isAuthenticated()
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize();
+      allow delete: if isAuthenticated()
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Users (Public read for profile images, Owner/Admin write/delete)
+    match /users/{userId} {
+      // Allow public read access for profile images
+      allow read: if true;
+      // Owner or Admin write/delete
+      allow write, delete: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        isAdmin(request.auth.token.email)
+      ) && isImage() && isValidSize();
+    }
+
+    // Thumbnails (Public read, Admin write/delete)
+    match /thumbnails/{thumbnailId} {
+      // Allow public read access
+      allow read: if true;
+      // Admin write/delete
+      allow write: if isAuthenticated()
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize();
+      allow delete: if isAuthenticated()
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Banners (Public read, Admin write/delete)
+    match /banners/{bannerId} {
+      // Allow public read access
+      allow read: if true;
+      // Admin write/delete
+      allow write: if isAuthenticated()
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize();
+      allow delete: if isAuthenticated()
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Promotions (Public read, Admin write/delete)
+    match /promotions/{promoId} {
+      // Allow public read access
+      allow read: if true;
+      // Admin write/delete
+      allow write: if isAuthenticated()
+                     && isAdmin(request.auth.token.email)
+                     && isImage()
+                     && isValidSize();
+      allow delete: if isAuthenticated()
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Reviews (Public read, authenticated user write/delete for their own reviews)
+    match /reviews/{reviewId}/images/{imageId} {
+      // Allow public read access
+      allow read: if true;
+      // Owner or Admin write/delete
+      allow write, delete: if isAuthenticated() && (
+        resource.name.matches('.*_' + request.auth.uid + '_.*') ||
+        isAdmin(request.auth.token.email)
+      ) && isImage() && isValidSize();
+    }
+
+    // Temp files (Admin only - no public access)
+    match /temp/{fileId} {
+      allow read: if false;
+      allow write, delete: if isAuthenticated()
+                             && isAdmin(request.auth.token.email)
+                             && isValidSize();
+    }
+
+    // Backups (Admin only)
+    match /backups/{fileId} {
+      allow read, write, delete: if isAuthenticated()
+                                   && isAdmin(request.auth.token.email);
+    }
+
+    // Analytics (Admin only)
+    match /analytics/{fileId} {
+      allow read, write, delete: if isAuthenticated()
+                                   && isAdmin(request.auth.token.email);
+    }
+
+    // Orders (Authenticated user read for their own orders, Admin write/delete)
+    match /orders/{orderId}/{fileId} {
+      allow read: if isAuthenticated() && (
+        resource.metadata.userId == request.auth.uid ||
+        isAdmin(request.auth.token.email)
+      );
+      allow write: if isAuthenticated()
+                     && isAdmin(request.auth.token.email)
+                     && isValidSize();
+      allow delete: if isAuthenticated()
+                      && isAdmin(request.auth.token.email);
+    }
+
+    // Support (Authenticated user read/write/delete for their own support tickets, Admin full access)
+    match /support/{ticketId}/{fileId} {
+      allow read: if isAuthenticated() && (
+        resource.metadata.userId == request.auth.uid ||
+        isAdmin(request.auth.token.email)
+      );
+      allow write, delete: if isAuthenticated() && (
+        request.auth.uid == resource.metadata.userId ||
+        isAdmin(request.auth.token.email)
+      ) && isValidSize();
+    }
+
+    // Default rule - deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+
+

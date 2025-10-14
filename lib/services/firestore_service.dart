@@ -1,4 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/product_model.dart';
+import '../models/brand_model.dart';
+import '../models/category_model.dart';
 
 class FirestoreService {
   FirestoreService._();
@@ -21,16 +24,20 @@ class FirestoreService {
     return col.orderBy('updatedAt', descending: true).snapshots().map(
       (q) => q.docs.map((d) {
         final m = d.data() as Map<String, dynamic>;
-        // ป้องกัน null/type error
+        // ป้องกัน null/type error และเพิ่ม brandId, categoryId
         return {
           'id': d.id,
           'name': (m['name'] ?? '') as String,
           'brand': (m['brand'] ?? '') as String,
+          'brandId': (m['brandId'] ?? '') as String,
           'category': (m['category'] ?? '') as String,
+          'categoryId': (m['categoryId'] ?? '') as String,
           'price': (m['price'] ?? 0) as num,
           'stock': (m['stock'] ?? 0) as num,
           'image': (m['image'] ?? '') as String,
+          'description': (m['description'] ?? '') as String,
           'updatedAt': m['updatedAt'],
+          'createdAt': m['createdAt'],
         };
       }).toList(),
     );
@@ -51,6 +58,21 @@ class FirestoreService {
         .limit(30)
         .snapshots()
         .map(_mapDocs);
+  }
+
+  /// เพิ่มสินค้าใหม่
+  static Future<void> addProduct(Map<String, dynamic> productData) async {
+    await _db.collection('products').add(productData);
+  }
+
+  /// อัปเดตสินค้า
+  static Future<void> updateProduct(String productId, Map<String, dynamic> productData) async {
+    await _db.collection('products').doc(productId).update(productData);
+  }
+
+  /// ลบสินค้า
+  static Future<void> deleteProduct(String productId) async {
+    await _db.collection('products').doc(productId).delete();
   }
 
   /// ค้นหาด้วย keywords (ใส่ array ในสินค้า) – ไม่ต้องสร้าง index
@@ -91,8 +113,6 @@ class FirestoreService {
     await _db.collection('products').doc(id).set(map, SetOptions(merge: true));
   }
 
-  static Future<void> deleteProduct(String id) =>
-      _db.collection('products').doc(id).delete();
 
   // -------------------- CART --------------------
 
@@ -148,5 +168,195 @@ class FirestoreService {
     }
     await batch.commit();
     return ref.id;
+  }
+
+  // -------------------- BRANDS --------------------
+
+  /// ดึงข้อมูลแบรนด์ทั้งหมด
+  static Stream<List<Brand>> watchBrands() {
+    return _db.collection('brands').orderBy('name').snapshots().map(
+          (snapshot) => snapshot.docs.map((doc) => Brand.fromFirestore(doc)).toList(),
+        );
+  }
+
+  /// ดึงข้อมูลแบรนด์ตาม ID
+  static Future<Brand?> getBrandById(String brandId) async {
+    try {
+      final doc = await _db.collection('brands').doc(brandId).get();
+      if (doc.exists) {
+        return Brand.fromFirestore(doc);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// ดึงข้อมูลแบรนด์หลายตัวพร้อมกัน
+  static Future<Map<String, Brand>> getBrandsByIds(List<String> brandIds) async {
+    final Map<String, Brand> brands = {};
+    
+    for (final brandId in brandIds) {
+      try {
+        final brand = await getBrandById(brandId);
+        if (brand != null) {
+          brands[brandId] = brand;
+        }
+      } catch (e) {
+        // Skip error brands
+      }
+    }
+    
+    return brands;
+  }
+
+  // -------------------- CATEGORIES --------------------
+
+  /// ดึงข้อมูลหมวดหมู่ทั้งหมด
+  static Stream<List<Category>> watchCategories() {
+    return _db.collection('categories').orderBy('name').snapshots().map(
+          (snapshot) => snapshot.docs.map((doc) => Category.fromFirestore(doc)).toList(),
+        );
+  }
+
+  /// ดึงข้อมูลหมวดหมู่ตาม ID
+  static Future<Category?> getCategoryById(String categoryId) async {
+    try {
+      final doc = await _db.collection('categories').doc(categoryId).get();
+      if (doc.exists) {
+        return Category.fromFirestore(doc);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// ดึงข้อมูลหมวดหมู่หลายตัวพร้อมกัน
+  static Future<Map<String, Category>> getCategoriesByIds(List<String> categoryIds) async {
+    final Map<String, Category> categories = {};
+    
+    for (final categoryId in categoryIds) {
+      try {
+        final category = await getCategoryById(categoryId);
+        if (category != null) {
+          categories[categoryId] = category;
+        }
+      } catch (e) {
+        // Skip error categories
+      }
+    }
+    
+    return categories;
+  }
+
+  // -------------------- PRODUCTS WITH BRAND/CATEGORY INFO --------------------
+
+  /// ดึงข้อมูลสินค้าพร้อมข้อมูลแบรนด์และหมวดหมู่ (Stream)
+  static Stream<List<Product>> watchProductsWithDetails() {
+    return watchProducts().asyncMap((productsData) async {
+      final List<Product> products = [];
+      
+      // ดึงข้อมูลแบรนด์และหมวดหมู่ทั้งหมด
+      final brandsSnapshot = await _db.collection('brands').get();
+      final categoriesSnapshot = await _db.collection('categories').get();
+      
+      final Map<String, String> brandNames = {};
+      final Map<String, String> categoryNames = {};
+      
+      for (final doc in brandsSnapshot.docs) {
+        brandNames[doc.id] = doc.data()['name'] ?? '';
+      }
+      
+      for (final doc in categoriesSnapshot.docs) {
+        categoryNames[doc.id] = doc.data()['name'] ?? '';
+      }
+      
+      // สร้าง Product objects พร้อมชื่อแบรนด์และหมวดหมู่
+      for (final data in productsData) {
+        final product = Product.fromMap(data);
+        final productWithDetails = Product(
+          id: product.id,
+          name: product.name,
+          brandId: product.brandId,
+          categoryId: product.categoryId,
+          price: product.price,
+          stock: product.stock,
+          image: product.image,
+          description: product.description,
+          updatedAt: product.updatedAt,
+          createdAt: product.createdAt,
+          brandName: brandNames[product.brandId],
+          categoryName: categoryNames[product.categoryId],
+        );
+        products.add(productWithDetails);
+      }
+      
+      return products;
+    });
+  }
+
+  /// ดึงข้อมูลสินค้าพร้อมข้อมูลแบรนด์และหมวดหมู่ (Future)
+  static Future<List<Product>> getProductsWithDetails() async {
+    print('Debug FirestoreService - getProductsWithDetails START');
+    final productsData = await watchProducts().first;
+    print('Debug FirestoreService - Raw products data: ${productsData.length}');
+    
+    // Debug: แสดงข้อมูลดิบจาก Firestore
+    for (var data in productsData) {
+      print('Debug FirestoreService - Raw data: $data');
+    }
+    
+    final List<Product> products = [];
+    
+    // ดึงข้อมูลแบรนด์และหมวดหมู่ทั้งหมด
+    final brandsSnapshot = await _db.collection('brands').get();
+    final categoriesSnapshot = await _db.collection('categories').get();
+    
+    print('Debug FirestoreService - Brands count: ${brandsSnapshot.docs.length}');
+    print('Debug FirestoreService - Categories count: ${categoriesSnapshot.docs.length}');
+    
+    final Map<String, String> brandNames = {};
+    final Map<String, String> categoryNames = {};
+    
+    for (final doc in brandsSnapshot.docs) {
+      final brandName = doc.data()['name'] ?? '';
+      brandNames[doc.id] = brandName;
+      print('Debug FirestoreService - Brand: ${doc.id} -> $brandName');
+    }
+    
+    for (final doc in categoriesSnapshot.docs) {
+      final categoryName = doc.data()['name'] ?? '';
+      categoryNames[doc.id] = categoryName;
+      print('Debug FirestoreService - Category: ${doc.id} -> $categoryName');
+    }
+    
+    // สร้าง Product objects พร้อมชื่อแบรนด์และหมวดหมู่
+    for (final data in productsData) {
+      final product = Product.fromMap(data);
+      print('Debug FirestoreService - Product fromMap: brandId=${product.brandId}, categoryId=${product.categoryId}');
+      
+      final productWithDetails = Product(
+        id: product.id,
+        name: product.name,
+        brandId: product.brandId,
+        categoryId: product.categoryId,
+        price: product.price,
+        stock: product.stock,
+        image: product.image,
+        description: product.description,
+        updatedAt: product.updatedAt,
+        createdAt: product.createdAt,
+        brandName: brandNames[product.brandId],
+        categoryName: categoryNames[product.categoryId],
+      );
+      
+      print('Debug FirestoreService - Product with details: brandId=${productWithDetails.brandId}, brandName=${productWithDetails.brandName}');
+      products.add(productWithDetails);
+    }
+    
+    print('Debug FirestoreService - Final products count: ${products.length}');
+    print('Debug FirestoreService - getProductsWithDetails END');
+    return products;
   }
 }

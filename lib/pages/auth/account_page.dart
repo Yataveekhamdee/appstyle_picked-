@@ -1,7 +1,9 @@
 // lib/account_page.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../providers/admin_auth_provider.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
@@ -159,6 +161,82 @@ class _AccountPageState extends State<AccountPage> {
             onPressed: () => _pick(ImageSource.camera),
             icon: const Icon(Icons.photo_camera),
             label: const Text('ถ่ายรูปโปรไฟล์'),
+          ),
+          const SizedBox(height: 10),
+          // Admin Dashboard Button
+          Consumer<AdminAuthProvider>(
+            builder: (context, adminAuth, child) {
+              return Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: adminAuth.isAdmin 
+                        ? [Colors.purple[400]!, Colors.purple[600]!]
+                        : [Colors.grey[400]!, Colors.grey[600]!],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: adminAuth.isAdmin 
+                      ? () => _navigateToAdmin(context)
+                      : () => _showAdminAccessDenied(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: Icon(
+                    adminAuth.isAdmin 
+                        ? Icons.admin_panel_settings 
+                        : Icons.block,
+                    color: Colors.white,
+                  ),
+                  label: Text(
+                    adminAuth.isAdmin 
+                        ? 'จัดการสินค้า (Admin)'
+                        : 'ไม่มีสิทธิ์ Admin',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToAdmin(BuildContext context) {
+    final adminAuth = context.read<AdminAuthProvider>();
+    
+    if (adminAuth.isLoggedIn && adminAuth.isAdmin) {
+      Navigator.pushNamed(context, '/admin');
+    } else {
+      // ไปที่หน้า Admin Login
+      Navigator.pushNamed(context, '/admin/login');
+    }
+  }
+
+  void _showAdminAccessDenied(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ไม่มีสิทธิ์เข้าถึง'),
+        content: const Text(
+          'คุณไม่มีสิทธิ์เข้าถึงระบบ Admin\n\n'
+          'กรุณาติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์เข้าถึง',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('ปิด'),
           ),
         ],
       ),

@@ -1,0 +1,88 @@
+[
+  {
+    "origin": [
+      "http://localhost:*",
+      "https://localhost:*",
+      "http://127.0.0.1:*",
+      "https://127.0.0.1:*",
+      "http://0.0.0.0:*",
+      "https://0.0.0.0:*"
+    ],
+    "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": [
+      "Content-Type",
+      "Content-Length",
+      "Content-Range",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Accept-Encoding",
+      "Accept-Language",
+      "Origin",
+      "Access-Control-Request-Method",
+      "Access-Control-Request-Headers",
+      "Access-Control-Allow-Origin",
+      "Access-Control-Allow-Methods",
+      "Access-Control-Allow-Headers",
+      "Access-Control-Expose-Headers",
+      "Cache-Control",
+      "ETag",
+      "Last-Modified"
+    ]
+  },
+  {
+    "origin": [
+      "https://appstyle-picked.web.app",
+      "https://appstyle-picked.firebaseapp.com",
+      "https://appstyle-picked--*.web.app",
+      "https://appstyle-picked--*.firebaseapp.com"
+    ],
+    "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": [
+      "Content-Type",
+      "Content-Length",
+      "Content-Range",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Accept-Encoding",
+      "Accept-Language",
+      "Origin",
+      "Access-Control-Request-Method",
+      "Access-Control-Request-Headers",
+      "Access-Control-Allow-Origin",
+      "Access-Control-Allow-Methods",
+      "Access-Control-Allow-Headers",
+      "Access-Control-Expose-Headers",
+      "Cache-Control",
+      "ETag",
+      "Last-Modified"
+    ]
+  },
+  {
+    "origin": ["*"],
+    "method": ["GET", "OPTIONS", "HEAD"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": [
+      "Content-Type",
+      "Content-Length",
+      "Content-Range",
+      "Accept",
+      "Accept-Encoding",
+      "Accept-Language",
+      "Origin",
+      "Access-Control-Allow-Origin",
+      "Access-Control-Allow-Methods",
+      "Access-Control-Allow-Headers",
+      "Access-Control-Expose-Headers",
+      "Cache-Control",
+      "ETag",
+      "Last-Modified"
+    ]
+  }
+]
+
+
+
