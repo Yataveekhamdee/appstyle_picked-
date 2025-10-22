@@ -1,14 +1,13 @@
+// lib/pages/admin/image_picker_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import '../../services/storage_service.dart';
-import '../../widgets/simple_network_image_widget.dart';
 
 class ImagePickerPage extends StatefulWidget {
-  final String? initialImage;
-  
+  final String? initialImage; // ยังรับไว้เผื่อส่งค่ามาแสดงพรีวิวได้
   const ImagePickerPage({super.key, this.initialImage});
 
   @override
@@ -16,129 +15,78 @@ class ImagePickerPage extends StatefulWidget {
 }
 
 class _ImagePickerPageState extends State<ImagePickerPage> {
-  final ImagePicker _picker = ImagePicker();
-  XFile? _selectedImage;
-  String? _imageUrl;
-  bool _isUploading = false;
-  Uint8List? _webImageBytes;
+  final _picker = ImagePicker();
+
+  XFile? _picked; // ไฟล์ที่เลือก (มือถือ)
+  Uint8List? _webBytes; // ไฟล์ที่เลือก (เว็บ)
+  String? _uploadedUrl; // URL หลังอัปโหลดสำเร็จ
+  bool _busy = false;
 
   @override
   void initState() {
     super.initState();
-    _imageUrl = widget.initialImage;
+    // ถ้ามี initialImage จะพรีวิวให้ แต่จะไม่ใช้เป็นผลลัพธ์จนกว่าจะอัปโหลดใหม่
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasSomething = _picked != null ||
+        _uploadedUrl != null ||
+        (widget.initialImage?.isNotEmpty ?? false);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('เลือกรูปภาพ', style: TextStyle(fontWeight: FontWeight.w700)),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
+        title: const Text('เลือกรูปภาพ'),
         actions: [
-          if (_selectedImage != null || _imageUrl != null)
-            TextButton(
-              onPressed: _confirmSelection,
-              child: const Text('ยืนยัน', style: TextStyle(fontWeight: FontWeight.w600)),
-            ),
+          if (_uploadedUrl != null && _uploadedUrl!.isNotEmpty)
+            TextButton(onPressed: _confirm, child: const Text('ยืนยัน')),
         ],
       ),
       body: Column(
         children: [
-          // แสดงรูปภาพที่เลือก
+          // พรีวิว
           Expanded(
             child: Container(
               width: double.infinity,
               margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!),
+                border: Border.all(color: Theme.of(context).dividerColor),
               ),
-              child: _buildImagePreview(),
+              child: hasSomething ? _buildPreview() : _emptyPreview(),
             ),
           ),
 
-          // ปุ่มเลือกรูปภาพ
-          Container(
+          // ปุ่มเลือกจากแกลเลอรี่ + อัปโหลด
+          Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _isUploading ? null : () => _pickImage(ImageSource.gallery),
-                        icon: const Icon(Icons.photo_library),
-                        label: const Text('เลือกรูปจากแกลเลอรี่'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _isUploading ? null : () => _pickImage(ImageSource.camera),
-                        icon: const Icon(Icons.camera_alt),
-                        label: const Text('ถ่ายรูป'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-                  ],
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _busy ? null : () => _pickFromGallery(),
+                    icon: const Icon(Icons.photo_library),
+                    label: const Text('เลือกจากแกลเลอรี่'),
+                  ),
                 ),
                 const SizedBox(height: 12),
-                
-                // ปุ่มอัปโหลดไป Firebase Storage
-                if (_selectedImage != null)
+                if (_picked != null)
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: _isUploading ? null : _uploadToFirebase,
-                      icon: _isUploading 
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Icon(Icons.cloud_upload),
-                      label: Text(_isUploading ? 'กำลังอัปโหลด...' : 'อัปโหลดไป Firebase Storage'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
+                      onPressed: _busy ? null : _upload,
+                      icon: _busy
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.cloud_upload),
+                      label: Text(_busy
+                          ? 'กำลังอัปโหลด...'
+                          : 'อัปโหลดไป Firebase Storage'),
                     ),
                   ),
-                if (_selectedImage != null) const SizedBox(height: 12),
-                
-                // ฟิลด์ URL รูปภาพ
-                TextField(
-                  onChanged: (value) {
-                    setState(() {
-                      _imageUrl = value.trim().isEmpty ? null : value.trim();
-                      _selectedImage = null; // เคลียร์รูปที่เลือก
-                    });
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'หรือใส่ URL รูปภาพ',
-                    hintText: 'https://example.com/image.jpg',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    prefixIcon: const Icon(Icons.link),
-                  ),
-                ),
               ],
             ),
           ),
@@ -147,246 +95,133 @@ class _ImagePickerPageState extends State<ImagePickerPage> {
     );
   }
 
-  Widget _buildImagePreview() {
-    if (_selectedImage != null) {
+  // ---------- Preview ----------
+  Widget _buildPreview() {
+    // ถ้าเพิ่งเลือกไฟล์ แสดงไฟล์นั้นก่อน
+    if (_picked != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: _buildImageWidget(),
+        child: kIsWeb && _webBytes != null
+            ? Image.memory(_webBytes!,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => _errorPreview())
+            : Image.file(File(_picked!.path),
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => _errorPreview()),
       );
-    } else if (_imageUrl != null && _imageUrl!.isNotEmpty) {
-      return SimpleSmartImageWidget(
-        imageUrl: _imageUrl!,
-        fit: BoxFit.contain,
+    }
+
+    // ถ้าอัปโหลดเสร็จแล้ว แสดงจาก URL ที่ได้
+    if (_uploadedUrl != null && _uploadedUrl!.isNotEmpty) {
+      return ClipRRect(
         borderRadius: BorderRadius.circular(12),
+        child: Image.network(_uploadedUrl!,
+            fit: BoxFit.contain, errorBuilder: (_, __, ___) => _errorPreview()),
       );
-    } else {
-      return const Center(
+    }
+
+    // ไม่ได้เลือก/อัปโหลด แต่ส่ง initialImage มา ก็พรีวิวให้เฉย ๆ
+    if (widget.initialImage?.isNotEmpty == true) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(widget.initialImage!,
+            fit: BoxFit.contain, errorBuilder: (_, __, ___) => _errorPreview()),
+      );
+    }
+
+    return _emptyPreview();
+  }
+
+  Widget _emptyPreview() => const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.image, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text(
-              'ยังไม่ได้เลือกรูปภาพ',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            Text(
-              'เลือกรูปจากแกลเลอรี่ ถ่ายรูป หรือใส่ URL',
-              style: TextStyle(color: Colors.grey),
-            ),
+            Icon(Icons.image, size: 64),
+            SizedBox(height: 8),
+            Text('ยังไม่ได้เลือกรูปภาพ'),
+            Text('กดปุ่ม “เลือกจากแกลเลอรี่” ด้านล่าง'),
           ],
         ),
       );
-    }
-  }
 
-  /// สร้าง Image Widget ที่รองรับทั้ง Mobile และ Web
-  Widget _buildImageWidget() {
-    if (kIsWeb) {
-      // สำหรับ Web platform
-      if (_webImageBytes != null) {
-        return Image.memory(
-          _webImageBytes!,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) => Container(
-            color: Colors.grey[200],
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error, size: 48, color: Colors.red),
-                  SizedBox(height: 8),
-                  Text('ไม่สามารถโหลดรูปภาพได้'),
-                ],
-              ),
-            ),
-          ),
-        );
-      } else {
-        return Container(
-          color: Colors.grey[200],
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.image, size: 48, color: Colors.grey),
-                SizedBox(height: 8),
-                Text('ยังไม่ได้เลือกรูปภาพ'),
-              ],
-            ),
-          ),
-        );
-      }
-    } else {
-      // สำหรับ Mobile platform
-      return Image.file(
-        File(_selectedImage!.path),
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => Container(
-          color: Colors.grey[200],
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error, size: 48, color: Colors.red),
-                SizedBox(height: 8),
-                Text('ไม่สามารถโหลดรูปภาพได้'),
-              ],
-            ),
-          ),
+  Widget _errorPreview() => const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline),
+            SizedBox(height: 8),
+            Text('โหลดรูปไม่สำเร็จ')
+          ],
         ),
       );
-    }
-  }
 
-  Future<void> _pickImage(ImageSource source) async {
+  // ---------- Actions ----------
+  Future<void> _pickFromGallery() async {
     try {
-      final XFile? image = await _picker.pickImage(
-        source: source,
+      final x = await _picker.pickImage(
+        source: ImageSource.gallery,
         maxWidth: 1024,
         maxHeight: 1024,
         imageQuality: 85,
       );
+      if (x == null) return;
 
-      if (image != null) {
+      if (kIsWeb) {
+        final bytes = await x.readAsBytes();
         setState(() {
-          _selectedImage = image;
-          _imageUrl = null; // เคลียร์ URL เมื่อเลือกรูปใหม่
+          _picked = x;
+          _webBytes = bytes;
+          _uploadedUrl = null; // รีเซ็ตผลลัพธ์เก่า
         });
-
-        // สำหรับ Web platform ให้โหลด bytes
-        if (kIsWeb) {
-          final bytes = await image.readAsBytes();
-          setState(() {
-            _webImageBytes = bytes;
-          });
-        }
+      } else {
+        setState(() {
+          _picked = x;
+          _webBytes = null;
+          _uploadedUrl = null; // รีเซ็ตผลลัพธ์เก่า
+        });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('เกิดข้อผิดพลาด: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _toast('เกิดข้อผิดพลาด: $e', isError: true);
     }
   }
 
-  Future<void> _uploadToFirebase() async {
-    if (_selectedImage == null) return;
-
-    setState(() => _isUploading = true);
-
+  Future<void> _upload() async {
+    if (_picked == null) return;
+    setState(() => _busy = true);
     try {
-      File? file;
-      
+      late final String url;
+
       if (kIsWeb) {
-        // สำหรับ Web platform ใช้ bytes
-        if (_webImageBytes == null) {
-          throw Exception('ไม่พบข้อมูลรูปภาพ');
-        }
-        
-        // ตรวจสอบขนาดไฟล์ (Web)
-        if (_webImageBytes!.length > 10 * 1024 * 1024) {
-          throw Exception('ขนาดไฟล์ใหญ่เกินไป (สูงสุด 10MB)');
-        }
-        
-        // สร้างไฟล์ชั่วคราวสำหรับ Web
-        try {
-          file = File.fromRawPath(_webImageBytes!);
-        } catch (e) {
-          print('Debug - Error creating File from bytes: $e');
-          throw Exception('ไม่สามารถสร้างไฟล์จากข้อมูลรูปภาพได้: $e');
-        }
+        if (_webBytes == null) throw 'ไม่พบข้อมูลรูปภาพ';
+        url = await StorageService.uploadProductImageBytes(_webBytes!);
       } else {
-        // สำหรับ Mobile platform
-        file = File(_selectedImage!.path);
-        
-        // ตรวจสอบขนาดไฟล์
-        if (!StorageService.isValidFileSize(file)) {
-          throw Exception('ขนาดไฟล์ใหญ่เกินไป (สูงสุด 10MB)');
-        }
-      }
-
-      // ตรวจสอบประเภทไฟล์
-      final filePath = _selectedImage!.path;
-      final fileName = _selectedImage!.name;
-      
-      // Debug information
-      print('Debug - File Path: $filePath');
-      print('Debug - File Name: $fileName');
-      print('Debug - Extension: ${filePath.split('.').last.toLowerCase()}');
-      
-      // ตรวจสอบประเภทไฟล์แบบหลายวิธี
-      bool isValidType = StorageService.isAllowedImageType(filePath);
-      
-      // ถ้าไม่ผ่าน ให้ลองตรวจสอบจากชื่อไฟล์โดยตรง
-      if (!isValidType) {
-        final nameLower = fileName.toLowerCase();
-        isValidType = nameLower.endsWith('.jpg') || 
-                     nameLower.endsWith('.jpeg') || 
-                     nameLower.endsWith('.png') || 
-                     nameLower.endsWith('.gif') || 
-                     nameLower.endsWith('.webp');
-        print('Debug - Fallback validation: $isValidType');
-      }
-      
-      if (!isValidType) {
-        throw Exception('ประเภทไฟล์ไม่รองรับ (รองรับ: JPG, PNG, GIF, WebP)\n'
-            'ไฟล์ที่เลือก: $fileName\n'
-            'Path: $filePath\n'
-            'Extension: ${filePath.split('.').last.toLowerCase()}');
-      }
-
-      // อัปโหลดไป Firebase Storage
-      String downloadUrl;
-      if (kIsWeb && _webImageBytes != null) {
-        // สำหรับ Web platform ส่ง bytes โดยตรง
-        downloadUrl = await StorageService.uploadProductImageBytes(_webImageBytes!);
-      } else {
-        // สำหรับ Mobile platform ส่ง File
-        downloadUrl = await StorageService.uploadProductImage(file);
+        final file = File(_picked!.path);
+        url = await StorageService.uploadProductImage(file);
       }
 
       setState(() {
-        _imageUrl = downloadUrl;
-        _selectedImage = null; // เคลียร์รูปที่เลือก
-        _webImageBytes = null; // เคลียร์ bytes สำหรับ Web
+        _uploadedUrl = url; // ได้ URL กลับมา
+        _picked = null; // เคลียร์ไฟล์ที่เลือกหลังอัปโหลด
+        _webBytes = null;
       });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('อัปโหลดรูปภาพสำเร็จ!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      _toast('อัปโหลดสำเร็จ!');
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('เกิดข้อผิดพลาด: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      _toast('อัปโหลดไม่สำเร็จ: $e', isError: true);
     } finally {
-      setState(() => _isUploading = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
-  void _confirmSelection() {
-    String? selectedImagePath;
-    
-    if (_selectedImage != null) {
-      selectedImagePath = _selectedImage!.path;
-    } else if (_imageUrl != null && _imageUrl!.isNotEmpty) {
-      selectedImagePath = _imageUrl!;
-    }
+  void _confirm() {
+    if (_uploadedUrl == null || _uploadedUrl!.isEmpty) return;
+    Navigator.pop(context, _uploadedUrl);
+  }
 
-    if (selectedImagePath != null) {
-      Navigator.pop(context, selectedImagePath);
-    }
+  void _toast(String msg, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(msg), backgroundColor: isError ? Colors.red : null),
+    );
   }
 }

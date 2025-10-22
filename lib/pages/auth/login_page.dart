@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -6,250 +10,151 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
+Future<void> ensureUserDoc(User user) async {
+  final ref = FirebaseFirestore.instance.collection('users').doc(user.uid);
+  final snap = await ref.get();
+  if (!snap.exists) {
+    await ref.set({
+      'uid': user.uid,
+      'email': user.email,
+      'name': user.displayName ?? '',
+      'photoURL': user.photoURL ?? '',
+      'createdAt': FieldValue.serverTimestamp(),
+      'role': 'customer',
+    });
+  }
+}
+
+
 class _LoginPageState extends State<LoginPage> {
-  final _email = TextEditingController();
-  final _pass  = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final email = TextEditingController();
+  final pass  = TextEditingController();
+  bool _loading = false;
+  bool _obscure = true;
 
-  void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
-
-  // ===== ไปหน้า "บัญชีผู้ใช้" พร้อมส่งข้อมูลเริ่มต้น =====
-  void _goAccount({String? name, String? email, String? avatarPath}) {
-    Navigator.pushReplacementNamed(
-      context,
-      '/account',
-      arguments: {
-        'name': name ?? '',
-        'email': email ?? '',
-        'avatarPath': avatarPath ?? '',
-      },
-    );
+  @override
+  void dispose() {
+    email.dispose();
+    pass.dispose();
+    super.dispose();
   }
 
-  // ===== เข้าสู่ระบบด้วยอีเมล/รหัสผ่าน =====
-  void _signInEmail() {
-    if (_email.text.trim().isEmpty || _pass.text.isEmpty) {
-      _snack('กรอกอีเมลและรหัสผ่าน'); 
-      return;
+  // รับอีเมลที่ถูกส่งมาจากหน้า signup เพื่อเติมอัตโนมัติ
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map && args['email'] is String) {
+      email.text = args['email'] as String;
     }
-    _goAccount(
-      name: 'ผู้ใช้',
-      email: _email.text.trim(),
-    );
   }
 
-  // ===== โซเชียล (เด้งไปหน้าบัญชีผู้ใช้) =====
-  void _signInGoogle() {
-    _goAccount(
-      name: 'ผู้ใช้ Google',
-      email: 'google@example.com',
-      // avatarPath: '.../path.jpg', // ถ้ามี
-    );
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _loading = true);
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email.text.trim(),
+        password: pass.text,
+      );
+
+      final user = FirebaseAuth.instance.currentUser!;
+    await ensureUserDoc(user);
+
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+    } on FirebaseAuthException catch (e) {
+      var msg = 'เข้าสู่ระบบไม่สำเร็จ';
+      if (e.code == 'user-not-found') msg = 'ไม่พบบัญชีผู้ใช้นี้';
+      if (e.code == 'wrong-password') msg = 'รหัสผ่านไม่ถูกต้อง';
+      if (e.code == 'invalid-email')  msg = 'อีเมลไม่ถูกต้อง';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
-  void _signInFacebook() {
-    _goAccount(
-      name: 'ผู้ใช้ Facebook',
-      email: 'facebook@example.com',
-    );
-  }
+  void _goSignup() => Navigator.pushReplacementNamed(context, '/signup');
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F6F6),
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final minH = constraints.maxHeight;
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: minH),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Form(
+                key: _formKey,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Header
-                    Row(
-                      children: const [
-                        SizedBox(width: 48),
-                        Expanded(
-                          child: Text(
-                            'เข้าสู่ระบบ',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-                          ),
-                        ),
-                        SizedBox(width: 48),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-                    _logo(cs),
+                    const Text('เข้าสู่ระบบ',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    const CircleAvatar(radius: 38, child: Icon(Icons.shopping_bag, size: 40)),
                     const SizedBox(height: 24),
 
-                    _card(
-                      cs: cs,
-                      children: [
-                        _underlineField(
-                          controller: _email,
-                          label: 'E-mail/เบอร์/ชื่อผู้ใช้',
-                          prefix: const Icon(Icons.person_outline),
-                          keyboard: TextInputType.emailAddress,
-                          focusColor: cs.primary,
-                        ),
-                        const SizedBox(height: 12),
-                        _underlineField(
-                          controller: _pass,
-                          label: 'รหัสผ่าน',
-                          prefix: const Icon(Icons.lock_outline),
-                          obscure: true,
-                          focusColor: cs.primary,
-                          trailing: TextButton(
-                            onPressed: () {},
-                            child: Text('ลืมรหัสผ่าน?', style: TextStyle(color: cs.primary)),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        SizedBox(
-                          height: 48, width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _signInEmail,
-                            child: const Text('เข้าสู่ระบบ',
-                                style: TextStyle(fontWeight: FontWeight.w800)),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        _orDivider(),
-                        const SizedBox(height: 14),
-                        _socialBtn(
-                          cs: cs,
-                          icon: Icons.g_mobiledata,
-                          label: 'ดำเนินการต่อด้วยบัญชี Google',
-                          onTap: _signInGoogle,
-                        ),
-                        const SizedBox(height: 10),
-                        _socialBtn(
-                          cs: cs,
-                          icon: Icons.facebook,
-                          label: 'ดำเนินการต่อด้วย Facebook',
-                          onTap: _signInFacebook,
-                        ),
-                      ],
+                    TextFormField(
+                      controller: email,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(labelText: 'อีเมล'),
+                      validator: (v) {
+                        final t = (v ?? '').trim();
+                        if (t.isEmpty) return 'กรุณากรอกอีเมล';
+                        final ok = RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(t);
+                        return ok ? null : 'รูปแบบอีเมลไม่ถูกต้อง';
+                      },
                     ),
+                    const SizedBox(height: 10),
 
-                    const SizedBox(height: 18),
-                    Center(
-                      child: TextButton(
-                        onPressed: () => Navigator.pushReplacementNamed(context, '/signup'),
-                        child: Text(
-                          'ยังไม่มีบัญชีผู้ใช้? สมัครเลย',
-                          style: TextStyle(fontWeight: FontWeight.w700, color: cs.primary),
+                    TextFormField(
+                      controller: pass,
+                      obscureText: _obscure,
+                      enableSuggestions: false,
+                      autocorrect: false,
+                      keyboardType: TextInputType.visiblePassword,
+                      onFieldSubmitted: (_) => _login(),
+                      decoration: InputDecoration(
+                        labelText: 'รหัสผ่าน',
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscure
+                              ? Icons.visibility
+                              : Icons.visibility_off),
+                          onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? 'กรุณากรอกรหัสผ่าน' : null,
+                    ),
+
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : _login,
+                        child: _loading
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                            : const Text('เข้าสู่ระบบ'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _loading ? null : _goSignup,
+                      child: const Text('ยังไม่มีบัญชี? สมัครเลย'),
                     ),
                   ],
                 ),
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
   }
-
-  // ── small widgets ─────────────────────────
-  Widget _logo(ColorScheme cs) => Center(
-        child: Container(
-          width: 76,
-          height: 76,
-          decoration: BoxDecoration(color: cs.primary, shape: BoxShape.circle),
-          child: const Icon(Icons.shopping_bag, color: Colors.white, size: 44),
-        ),
-      );
-
-  Widget _card({required ColorScheme cs, required List<Widget> children}) =>
-      Container(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFEAEAEA)),
-        ),
-        child: Column(children: children),
-      );
-
-  Widget _underlineField({
-    required TextEditingController controller,
-    required String label,
-    required Color focusColor,
-    Widget? prefix,
-    Widget? trailing,
-    bool obscure = false,
-    TextInputType? keyboard,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (prefix != null) ...[prefix, const SizedBox(width: 10)],
-        Expanded(
-          child: TextField(
-            controller: controller,
-            obscureText: obscure,
-            keyboardType: keyboard,
-            decoration: InputDecoration(
-              labelText: label,
-              border: const UnderlineInputBorder(),
-              enabledBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFFE0E0E0)),
-              ),
-              focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: focusColor, width: 1.6),
-              ),
-              contentPadding: const EdgeInsets.only(bottom: 6),
-            ),
-          ),
-        ),
-        if (trailing != null) ...[const SizedBox(width: 6), trailing],
-      ],
-    );
-  }
-
-  Widget _orDivider() => Row(
-        children: const [
-          Expanded(child: Divider()),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 10),
-            child: Text('หรือ', style: TextStyle(color: Colors.black54)),
-          ),
-          Expanded(child: Divider()),
-        ],
-      );
-
-  Widget _socialBtn({
-    required ColorScheme cs,
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) =>
-      SizedBox(
-        height: 46,
-        child: OutlinedButton.icon(
-          onPressed: onTap,
-          icon: Icon(icon, size: 24, color: cs.primary),
-          label: Text(
-            label,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700),
-          ),
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(color: cs.primary, width: 1.2),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            foregroundColor: cs.primary,
-          ),
-        ),
-      );
 }

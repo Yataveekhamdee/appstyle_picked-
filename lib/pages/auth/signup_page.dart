@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -7,153 +8,116 @@ class SignupPage extends StatefulWidget {
 }
 
 class _SignupPageState extends State<SignupPage> {
-  final _name  = TextEditingController();
+  final _form = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _pass  = TextEditingController();
+  bool _hide = true, _loading = false;
 
-  void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
-
-  // TODO: ต่อแบ็กเอนด์จริงในภายหลัง
-  void _signUp() {
-    if (_name.text.trim().isEmpty || _email.text.trim().isEmpty || _pass.text.isEmpty) {
-      _snack('กรอกข้อมูลให้ครบ'); return;
-    }
-    Navigator.pushReplacementNamed(context, '/home');
+  @override
+  void dispose() {
+    _email.dispose();
+    _pass.dispose();
+    super.dispose();
   }
 
-  void _signInGoogle()   => Navigator.pushReplacementNamed(context, '/home');
-  void _signInFacebook() => Navigator.pushReplacementNamed(context, '/home');
+  Future<void> _signup() async {
+    if (!(_form.currentState?.validate() ?? false)) return;
+    setState(() => _loading = true);
+    try {
+      // สมัครผู้ใช้ใหม่
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _email.text.trim(),
+        password: _pass.text,
+      );
+
+      // ออกจากระบบ เพื่อให้ต้องล็อกอินเอง
+      await FirebaseAuth.instance.signOut();
+
+      if (!mounted) return;
+      // กลับไปหน้า Login พร้อมส่งอีเมลไปเติมอัตโนมัติ
+      Navigator.pushReplacementNamed(
+        context,
+        '/login',
+        arguments: {'email': _email.text.trim()},
+      );
+    } on FirebaseAuthException catch (e) {
+      String msg = 'สมัครไม่สำเร็จ';
+      if (e.code == 'email-already-in-use') {
+        msg = 'อีเมลนี้ถูกใช้ไปแล้ว';
+      } else if (e.code == 'invalid-email') {
+        msg = 'อีเมลไม่ถูกต้อง';
+      } else if (e.code == 'weak-password') {
+        msg = 'รหัสผ่านอย่างน้อย 6 ตัวอักษร';
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    InputDecoration deco(String label, IconData icon, {Widget? suffix}) =>
+        InputDecoration(labelText: label, prefixIcon: Icon(icon), suffixIcon: suffix);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F6F6),
+      appBar: AppBar(title: const Text('สมัครสมาชิก'), centerTitle: true),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
-                  icon: const Icon(Icons.arrow_back_ios_new, size: 18),
-                ),
-                const Expanded(
-                  child: Text('สมัครสมาชิก', textAlign: TextAlign.center,
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-                ),
-                const SizedBox(width: 48),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _logo(),
-
-            _card(children: [
-              _underlineField(controller: _name,  label: 'ชื่อผู้ใช้',
-                prefix: const Icon(Icons.badge_outlined)),
-              const SizedBox(height: 8),
-              _underlineField(controller: _email, label: 'อีเมล',
-                prefix: const Icon(Icons.mail_outline),
-                keyboard: TextInputType.emailAddress),
-              const SizedBox(height: 8),
-              _underlineField(controller: _pass,  label: 'รหัสผ่าน',
-                prefix: const Icon(Icons.lock_outline), obscure: true),
-              const SizedBox(height: 14),
-              SizedBox(
-                height: 48, width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _signUp,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF4D2D),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        child: Form(
+          key: _form,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              TextFormField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: deco('อีเมล', Icons.mail_outline),
+                validator: (v) {
+                  final t = (v ?? '').trim();
+                  final ok = RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(t);
+                  return ok ? null : 'อีเมลไม่ถูกต้อง';
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _pass,
+                obscureText: _hide,
+                decoration: deco(
+                  'รหัสผ่าน',
+                  Icons.lock_outline,
+                  suffix: IconButton(
+                    icon: Icon(_hide ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () => setState(() => _hide = !_hide),
                   ),
-                  child: const Text('สมัครสมาชิก', style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+                validator: (v) =>
+                    (v != null && v.length >= 6) ? null : 'อย่างน้อย 6 ตัวอักษร',
+                onFieldSubmitted: (_) => _signup(),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _signup,
+                  child: _loading
+                      ? const SizedBox(
+                          width: 20, height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('สมัครสมาชิก'),
                 ),
               ),
-              const SizedBox(height: 12),
-              _orDivider(),
-              const SizedBox(height: 12),
-              _socialBtn(icon: Icons.g_mobiledata, label: 'ดำเนินการต่อด้วยบัญชี Google', onTap: _signInGoogle),
-              const SizedBox(height: 10),
-              _socialBtn(icon: Icons.facebook, label: 'ดำเนินการต่อด้วย Facebook', onTap: _signInFacebook),
-            ]),
-
-            const SizedBox(height: 12),
-            Center(
-              child: TextButton(
-                onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
-                child: const Text('มีบัญชีอยู่แล้ว? เข้าสู่ระบบ',
-                    style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _loading ? null : () => Navigator.pushReplacementNamed(context, '/login'),
+                child: const Text('มีบัญชีอยู่แล้ว? เข้าสู่ระบบ'),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
-
-  // ── small widgets (เหมือน LoginPage) ─────────────────────────
-  Widget _logo() => Center(
-    child: Container(
-      width: 72, height: 72,
-      decoration: const BoxDecoration(color: Color(0xFFFF4D2D), shape: BoxShape.circle),
-      child: const Icon(Icons.shopping_bag, color: Colors.white, size: 42),
-    ),
-  );
-
-  Widget _card({required List<Widget> children}) => Container(
-    padding: const EdgeInsets.fromLTRB(14, 14, 14, 18),
-    decoration: BoxDecoration(
-      color: Colors.white, borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: const Color(0xFFEAEAEA))),
-    child: Column(children: children),
-  );
-
-  Widget _underlineField({
-    required TextEditingController controller,
-    required String label,
-    Widget? prefix, bool obscure = false, TextInputType? keyboard,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (prefix != null) ...[prefix, const SizedBox(width: 8)],
-        Expanded(
-          child: TextField(
-            controller: controller, obscureText: obscure, keyboardType: keyboard,
-            decoration: const InputDecoration(
-              border: UnderlineInputBorder(),
-              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.black87)),
-            ).copyWith(labelText: label),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _orDivider() => Row(
-    children: const [
-      Expanded(child: Divider()),
-      Padding(padding: EdgeInsets.symmetric(horizontal: 10),
-        child: Text('หรือ', style: TextStyle(color: Colors.black54))),
-      Expanded(child: Divider()),
-    ],
-  );
-
-  Widget _socialBtn({required IconData icon, required String label, required VoidCallback onTap}) =>
-      SizedBox(
-        height: 46,
-        child: OutlinedButton.icon(
-          onPressed: onTap,
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Color(0xFFE0E0E0)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            foregroundColor: Colors.black87,
-          ),
-          icon: Icon(icon, size: 24),
-          label: Text(label, overflow: TextOverflow.ellipsis),
-        ),
-      );
 }

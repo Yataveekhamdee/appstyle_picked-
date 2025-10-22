@@ -1,12 +1,14 @@
-// cart_store.dart
 import 'package:flutter/foundation.dart';
 
 class CartItem {
+  final String productId;
   final String title;
   final double price;
   final String image;
   int qty;
+
   CartItem({
+    required this.productId, // ✅ ผูกกับฟิลด์ของคลาส
     required this.title,
     required this.price,
     required this.image,
@@ -17,22 +19,27 @@ class CartItem {
 class CartStore extends ChangeNotifier {
   final List<CartItem> items = [];
 
-  double get total =>
-      items.fold(0.0, (sum, it) => sum + it.price * it.qty);
+  double get total => items.fold(0.0, (sum, it) => sum + it.price * it.qty);
 
   void add({
+    required String productId, // ✅ รับ productId
     required String title,
     required double price,
     required String image,
     int qty = 1,
   }) {
-    final idx = items.indexWhere(
-      (e) => e.title == title && e.image == image && e.price == price,
-    );
+    // แนะนำให้อิงด้วย productId เป็นหลัก
+    final idx = items.indexWhere((e) => e.productId == productId);
     if (idx >= 0) {
       items[idx].qty += qty;
     } else {
-      items.add(CartItem(title: title, price: price, image: image, qty: qty));
+      items.add(CartItem(
+        productId: productId, // ✅ เก็บ productId
+        title: title,
+        price: price,
+        image: image,
+        qty: qty,
+      ));
     }
     notifyListeners();
   }

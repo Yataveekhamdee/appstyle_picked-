@@ -5,32 +5,30 @@ class OrderPreparingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final args = (ModalRoute.of(context)?.settings.arguments as Map?) ?? {};
-    final total = (args['grandTotal'] ?? 0).toDouble();
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('เตรียมจัดส่งพัสดุ'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('เตรียมจัดส่งพัสดุ'), centerTitle: true),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.local_shipping, size: 80, color: Colors.green),
-            const SizedBox(height: 12),
-            const Text('ชำระเงินเสร็จสมบูรณ์'),
-            const SizedBox(height: 4),
-            Text('ยอดชำระ ฿${total.toStringAsFixed(0)}',
-                style: const TextStyle(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 18),
-            const Text('ร้านค้ากำลังเตรียมจัดส่งพัสดุของคุณ…'),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false),
-              child: const Text('กลับหน้าหลัก'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.local_shipping, size: 84, color: cs.primary),
+              const SizedBox(height: 12),
+              const Text('ชำระเงินเสร็จสมบูรณ์',
+                  style: TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              const Text('ร้านค้ากำลังเตรียมจัดส่งพัสดุของคุณ…'),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: () =>
+                    Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false),
+                child: const Text('กลับหน้าหลัก'),
+              ),
+            ],
+          ),
         ),
       ),
     );
