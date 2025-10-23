@@ -7,123 +7,106 @@ class AdminOrdersPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stream = FirebaseFirestore.instance
+    final q = FirebaseFirestore.instance
         .collection('orders')
         .orderBy('createdAt', descending: true)
+        .withConverter<Map<String, dynamic>>(
+          fromFirestore: (s, _) => s.data() ?? {},
+          toFirestore: (m, _) => m,
+        )
         .snapshots();
 
     return Scaffold(
       appBar: AppBar(title: const Text('ออเดอร์ทั้งหมด')),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: stream,
-        builder: (context, snap) {
-          if (!snap.hasData)
-            return const Center(child: CircularProgressIndicator());
-          final docs = snap.data!.docs;
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: q,
+        builder: (_, s) {
+          if (!s.hasData) return const Center(child: CircularProgressIndicator());
+          final docs = s.data!.docs;
           if (docs.isEmpty) return const Center(child: Text('ยังไม่มีออเดอร์'));
 
           return ListView.builder(
             itemCount: docs.length,
-            itemBuilder: (context, i) {
+            itemBuilder: (_, i) {
               final d = docs[i];
-              final data = Map<String, dynamic>.from(d.data() as Map);
-              final id = d.id;
+              final m = d.data();
 
-              final address = Map<String, dynamic>.from(data['address'] ?? {});
-              final name = (address['name'] ?? '').toString();
-              final phone = (address['phone'] ?? '').toString();
-              final line1 = (address['line1'] ?? '').toString();
-              final district = (address['district'] ?? '').toString();
-              final province = (address['province'] ?? '').toString();
-              final zip = (address['zip'] ?? '').toString();
+              final addr = (m['address'] as Map?)?.cast<String, dynamic>() ?? const {};
+              final items = (m['items'] as List? ?? const [])
+                  .map((e) => (e as Map).cast<String, dynamic>())
+                  .toList();
+              final slipUrl = (m['payment']?['slipUrl'] ?? '').toString();
 
-              final total = (data['grandTotal'] ?? 0).toString();
-              final method = (data['paymentMethod'] ?? '').toString();
-              final status = (data['status'] ?? 'pending').toString();
-
-              final payment = Map<String, dynamic>.from(data['payment'] ?? {});
-              final slipUrl = (payment['slipUrl'] ?? '').toString();
+              // "เสื้อยืด ×2, กางเกง ×1"
+              final itemLine = items.isEmpty
+                  ? '-'
+                  : items.map((x) => '${x['title']} x ${x['qty'] ?? 1}').join(', ');
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // หัวข้อ Order ID
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Order #$id',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 16)),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () async {
-                              final ok = await showDialog<bool>(
-                                context: context,
-                                builder: (_) => AlertDialog(
-                                  title: const Text('ลบออเดอร์'),
-                                  content:
-                                      Text('ยืนยันลบออเดอร์ #$id หรือไม่?'),
-                                  actions: [
-                                    TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, false),
-                                        child: const Text('ยกเลิก')),
-                                    FilledButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, true),
-                                        child: const Text('ลบ')),
-                                  ],
-                                ),
-                              );
-                              if (ok == true) {
-                                await d.reference.delete();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text('ลบออเดอร์ #$id แล้ว')),
-                                );
-                              }
-                            },
-                          ),
-                        ],
+                  padding: const EdgeInsets.all(12),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    // หัวเรื่อง + ปุ่มลบ
+                    Row(children: [
+                      Expanded(
+                        child: Text('Order #${d.id}',
+                            style: const TextStyle(fontWeight: FontWeight.bold)),
                       ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () async {
+                          final ok = await showDialog<bool>(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text('ลบออเดอร์?'),
+                              actions: [
+                                TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('ยกเลิก')),
+                                FilledButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: const Text('ลบ')),
+                              ],
+                            ),
+                          );
+                          if (ok == true) await d.reference.delete();
+                        },
+                      ),
+                    ]),
 
-                      // ที่อยู่ลูกค้า
-                      Text('$name • $phone',
-                          style: const TextStyle(fontWeight: FontWeight.w500)),
-                      Text('$line1'),
-                      Text('$district $province $zip',
-                          style: const TextStyle(color: Colors.black54)),
+                    // ที่อยู่ / ยอดรวม / วิธีจ่าย / สถานะ
+                    Text('${addr['name'] ?? ''} • ${addr['phone'] ?? ''}'),
+                    Text(
+                      '${addr['line1'] ?? ''}  ${addr['district'] ?? ''}  ${addr['province'] ?? ''} ${addr['zip'] ?? ''}',
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+                    const SizedBox(height: 6),
+                    Text('ยอดรวม ฿${m['grandTotal'] ?? 0} • ${m['paymentMethod'] ?? ''}'),
+                    Text('สถานะ: ${m['status'] ?? 'pending'}',
+                        style: const TextStyle(color: Colors.black54)),
+                    const SizedBox(height: 8),
 
-                      const SizedBox(height: 8),
+                    // รายการสินค้า (บรรทัดเดียว)
+                    Text('สินค้า: $itemLine'),
+                    const SizedBox(height: 8),
 
-                      // ยอดรวม + วิธีชำระ + สถานะ
-                      Text('ยอดรวม ฿$total • $method',
-                          style: const TextStyle(fontWeight: FontWeight.w600)),
-                      Text('สถานะ: $status',
-                          style: const TextStyle(color: Colors.black54)),
-
-                      // รูปสลิป (ถ้ามี)
-                      if (slipUrl.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            slipUrl,
+                    // สลิป (ถ้ามี)
+                    if (slipUrl.isNotEmpty)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          slipUrl,
+                          height: 160,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const SizedBox(
                             height: 160,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const SizedBox(
-                                height: 160,
-                                child: Center(child: Text('โหลดรูปไม่ได้'))),
+                            child: Center(child: Text('โหลดรูปไม่ได้')),
                           ),
                         ),
-                      ],
-                    ],
-                  ),
+                      ),
+                  ]),
                 ),
               );
             },

@@ -115,22 +115,7 @@ class ProductProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// ดึงสินค้าตามแบรนด์เฉพาะ (รองรับทั้ง brandId และ brandName)
-  List<Product> getProductsByBrand(String brand) {
-    print('Debug ProductProvider - getProductsByBrand: $brand');
-    print('Debug ProductProvider - Total products: ${_products.length}');
-    final result = _products.where((product) {
-      final matchBrandId = product.brandId.toLowerCase() == brand.toLowerCase();
-      final matchBrandName = product.brand.toLowerCase() == brand.toLowerCase();
-      final matchBrandNameFromId = product.brandName != null && 
-          product.brandName!.toLowerCase() == brand.toLowerCase();
-      
-      return matchBrandId || matchBrandName || matchBrandNameFromId;
-    }).toList();
-    print('Debug ProductProvider - Found products: ${result.length}');
-    return result;
-  }
-
+ 
   /// ดึงสินค้าตามหมวดหมู่เฉพาะ
   List<Product> getProductsByCategory(String categoryId) {
     return _products.where((product) {
@@ -138,18 +123,7 @@ class ProductProvider extends ChangeNotifier {
     }).toList();
   }
 
-  /// ดึงสินค้าที่เป็นเทรนด์ (สามารถปรับแต่งได้)
-  List<Product> getTrendingProducts({int limit = 4}) {
-    // ตัวอย่าง: เอาสินค้าล่าสุดเป็นเทรนด์
-    final sortedProducts = List<Product>.from(_products);
-    sortedProducts.sort((a, b) {
-      if (a.updatedAt == null && b.updatedAt == null) return 0;
-      if (a.updatedAt == null) return 1;
-      if (b.updatedAt == null) return -1;
-      return b.updatedAt!.compareTo(a.updatedAt!);
-    });
-    return sortedProducts.take(limit).toList();
-  }
+
 
   /// ลบสินค้า
   Future<void> deleteProduct(String productId) async {

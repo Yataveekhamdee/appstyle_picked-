@@ -13,7 +13,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   final _form = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _pass = TextEditingController();
-  bool _busy = false, _hide = true;
+  bool _busy = false, _obscure = true;
 
   static const _admins = {'admin@gmail.com', 'yatawikhadi@gmail.com'};
 
@@ -27,8 +27,9 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   String? _vEmail(String? v) {
     final s = v?.trim().toLowerCase() ?? '';
     if (s.isEmpty) return 'กรุณากรอกอีเมล';
-    if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(s))
+    if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(s)) {
       return 'อีเมลไม่ถูกต้อง';
+    }
     if (!_admins.contains(s)) return 'อีเมลนี้ไม่มีสิทธิ์ Admin';
     return null;
   }
@@ -55,7 +56,9 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
       if (!mounted) return;
       _snack('เข้าสู่ระบบสำเร็จ!');
       Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => const AdminDashboard()));
+        context,
+        MaterialPageRoute(builder: (_) => const AdminDashboard()),
+      );
     } on FirebaseAuthException catch (e) {
       _snack(e.message ?? e.code, true);
     } catch (e) {
@@ -87,6 +90,12 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         title: const Text('เข้าสู่ระบบ Admin'),
         leading: BackButton(
             onPressed: () => Navigator.pushReplacementNamed(context, '/login')),
+        actions: [
+          TextButton(
+              onPressed: _busy ? null : _reset,
+              child: const Text('ลืมรหัสผ่าน',
+                  style: TextStyle(color: Colors.white))),
+        ],
       ),
       body: Center(
         child: ConstrainedBox(
@@ -107,23 +116,24 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                   keyboardType: TextInputType.emailAddress,
                   validator: _vEmail,
                   decoration: const InputDecoration(
-                      labelText: 'อีเมล', prefixIcon: Icon(Icons.email)),
+                    labelText: 'อีเมล',
+                    prefixIcon: Icon(Icons.email),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _pass,
-                  obscureText: _hide,   
+                  obscureText: _obscure,
                   validator: _vPass,
-                  enableSuggestions: false,
-                  autocorrect: false,
                   keyboardType: TextInputType.visiblePassword,
                   decoration: InputDecoration(
                     labelText: 'รหัสผ่าน',
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
-                      icon:
-                          Icon(_hide ? Icons.visibility : Icons.visibility_off),
-                      onPressed: () => setState(() => _hide = !_hide),
+                      icon: Icon(_obscure
+                          ? Icons.visibility_off
+                          : Icons.visibility), // ✅ เหมือนหน้า user
+                      onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),
                 ),

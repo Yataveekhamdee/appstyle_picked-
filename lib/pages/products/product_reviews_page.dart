@@ -93,7 +93,6 @@ class _ProductReviewsPageState extends State<ProductReviewsPage> {
               const Text('เขียนรีวิวของคุณ',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-
               TextField(
                 controller: _name,
                 decoration: const InputDecoration(
@@ -102,7 +101,6 @@ class _ProductReviewsPageState extends State<ProductReviewsPage> {
                 ),
               ),
               const SizedBox(height: 8),
-
               TextField(
                 controller: _text,
                 maxLines: 2,
@@ -112,7 +110,6 @@ class _ProductReviewsPageState extends State<ProductReviewsPage> {
                 ),
               ),
               const SizedBox(height: 8),
-
               Row(
                 children: [
                   const Text('ให้คะแนน:'),
@@ -126,7 +123,6 @@ class _ProductReviewsPageState extends State<ProductReviewsPage> {
                     ),
                 ],
               ),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -140,14 +136,13 @@ class _ProductReviewsPageState extends State<ProductReviewsPage> {
                       : const Text('ส่งรีวิว'),
                 ),
               ),
-
               const Divider(height: 30),
               const Text('รีวิวจากผู้ใช้',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-
               if (docs.isEmpty)
-                const Text('ยังไม่มีรีวิว', style: TextStyle(color: Colors.grey)),
+                const Text('ยังไม่มีรีวิว',
+                    style: TextStyle(color: Colors.grey)),
               ...docs.map((d) {
                 final r = d.data();
                 final name = (r['name'] ?? 'ไม่ระบุชื่อ').toString();
@@ -162,8 +157,8 @@ class _ProductReviewsPageState extends State<ProductReviewsPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: List.generate(
                         stars,
-                        (_) =>
-                            const Icon(Icons.star, color: Colors.amber, size: 16),
+                        (_) => const Icon(Icons.star,
+                            color: Colors.amber, size: 16),
                       ),
                     ),
                   ),

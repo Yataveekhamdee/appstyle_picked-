@@ -1,6 +1,6 @@
+// lib/pages/checkout/checkout_page.dart
 import 'package:flutter/material.dart';
 import '../../providers/cart_store.dart';
-
 
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
@@ -9,7 +9,9 @@ class CheckoutPage extends StatefulWidget {
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
-  final _form = GlobalKey<FormState>();
+  final form = GlobalKey<FormState>();
+
+  // ที่อยู่
   String name = 'ญาดา พ่วงเกิด',
       phone = '098-002-8979',
       line1 = '123 ม.5 ต.คอนสาร',
@@ -17,31 +19,27 @@ class _CheckoutPageState extends State<CheckoutPage> {
       province = 'จ.ราชบุรี',
       zip = '70140';
 
-  int pay = 0; // 0=บัตร, 1=Mobile
-
+  // ตัดตัวเลือกบัตรเครดิตออก เหลือ Mobile Banking อย่างเดียว
   double get itemsTotal => cartStore.total;
-  double get ship => 0;
-  double get grand => itemsTotal + ship;
-  String get method => pay == 0 ? 'บัตรเครดิต/เดบิต' : 'Mobile Banking';
+  double get shipping => 0;
+  double get grand => itemsTotal + shipping;
+  String get method => 'Mobile Banking';
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
     return AnimatedBuilder(
       animation: cartStore,
       builder: (_, __) => Scaffold(
         appBar: AppBar(title: const Text('ยืนยันคำสั่งซื้อ')),
-        body: SingleChildScrollView(
+        body: ListView(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 120),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // ที่อยู่ (แก้บนหน้าเดียว)
+          children: [
+            // ── ที่อยู่ ────────────────────────────────────────────
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Form(
-                  key: _form,
+                  key: form,
                   child: Column(children: [
                     _tf('ชื่อ-นามสกุล',
                         initial: name,
@@ -80,13 +78,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
             ),
             const SizedBox(height: 10),
 
-            // รายการสินค้า
+            // ── รายการสินค้า ───────────────────────────────────────
             Card(
               child: Column(children: [
                 const ListTile(
-                    title: Text('สั่งซื้อสินค้า',
-                        style: TextStyle(fontWeight: FontWeight.w800)),
-                    subtitle: Text('จัดส่งฟรี')),
+                  title: Text('สั่งซื้อสินค้า',
+                      style: TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: Text('จัดส่งฟรี'),
+                ),
                 const Divider(height: 0),
                 ...cartStore.items.map((e) => ListTile(
                       dense: true,
@@ -99,87 +98,43 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       subtitle: Text('x${e.qty}'),
                       trailing: Text('฿${(e.price * e.qty).toStringAsFixed(0)}',
                           style: TextStyle(
-                              color: cs.error, fontWeight: FontWeight.w900)),
+                              color: Theme.of(context).colorScheme.error,
+                              fontWeight: FontWeight.w900)),
                     )),
               ]),
             ),
             const SizedBox(height: 10),
 
-            // วิธีชำระเงิน (สั้นๆ)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: Row(children: [
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('การชำระเงิน',
-                        style: TextStyle(fontWeight: FontWeight.w800)),
-                  ),
-                  const Spacer(),
-                  DropdownButton<int>(
-                    value: pay,
-                    items: const [
-                      DropdownMenuItem(
-                          value: 0, child: Text('บัตรเครดิต/เดบิต')),
-                      DropdownMenuItem(value: 1, child: Text('Mobile Banking')),
-                    ],
-                    onChanged: (v) => setState(() => pay = v!),
-                  ),
-                ]),
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            // สรุปยอด
+            // ── สรุปยอด ────────────────────────────────────────────
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(children: [
                   _row('ราคาสินค้า', '฿${itemsTotal.toStringAsFixed(0)}'),
-                  _row('ค่าจัดส่ง', '฿${ship.toStringAsFixed(0)}'),
+                  _row('ค่าจัดส่ง', '฿${shipping.toStringAsFixed(0)}'),
                   const Divider(),
                   _rowBold('ยอดรวม', '฿${grand.toStringAsFixed(0)}'),
+                  // (ถ้าต้องการบอกวิธีชำระแบบสั้น ๆ สามารถแสดง method ได้ แต่ตามคำขอ "ไม่เพิ่มอะไรใหม่" จึงไม่แสดง)
                 ]),
               ),
             ),
-          ]),
+          ],
         ),
 
-        // แถบรวมยอด + ปุ่มตกลง
+        // ── แถบรวมยอด + ปุ่มตกลง ─────────────────────────────────
         bottomNavigationBar: SafeArea(
           top: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
             child: Row(children: [
-              const Expanded(
-                  child: Text('ยอดชำระ', style: TextStyle(fontSize: 12))),
+              const Text('ยอดชำระ', style: TextStyle(fontSize: 12)),
+              const Spacer(),
               Text('฿${grand.toStringAsFixed(0)}',
                   style: const TextStyle(
                       fontWeight: FontWeight.w900, fontSize: 18)),
               const SizedBox(width: 10),
               FilledButton(
-                onPressed: cartStore.items.isEmpty
-                    ? null
-                    : () {
-                        if (!(_form.currentState?.validate() ?? false)) return;
-                        _form.currentState?.save();
-                        Navigator.pushNamed(context, '/paymentDetail',
-                            arguments: {
-                              'itemsTotal': itemsTotal,
-                              'shippingFee': ship,
-                              'discount': 0.0,
-                              'grandTotal': grand,
-                              'methodLabel': method,
-                              'address': {
-                                'name': name,
-                                'phone': phone,
-                                'line1': line1,
-                                'district': district,
-                                'province': province,
-                                'zip': zip,
-                              },
-                            });
-                      },
+                onPressed: cartStore.items.isEmpty ? null : _goPay,
                 child: const Text('ตกลง'),
               ),
             ]),
@@ -189,7 +144,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  // helpers (เวอร์ชันสั้น)
+  /* ─────────────── validators + widgets ─────────────── */
   String? _req(String? v) =>
       (v == null || v.trim().isEmpty) ? 'กรุณากรอก' : null;
   String? _phone(String? v) {
@@ -214,8 +169,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
         keyboardType: keyboard,
         validator: validator,
         onSaved: onSaved,
-        decoration: InputDecoration(
-            labelText: label, border: const OutlineInputBorder()),
+        decoration: const InputDecoration(
+          labelText: 'label', // จะถูกแทนด้วย label ด้านล่าง
+        ).copyWith(labelText: label, border: const OutlineInputBorder()),
       ),
     );
   }
@@ -224,7 +180,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(children: [Expanded(child: Text(l)), Text(r)]),
       );
-
   Widget _rowBold(String l, String r) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(children: [
@@ -235,20 +190,27 @@ class _CheckoutPageState extends State<CheckoutPage> {
         ]),
       );
 
-  Widget _img(String path, double w, double h) {
-    final fb = const ColoredBox(color: Color(0xFFEFEFEF));
-    if (path.startsWith('http')) {
-      return Image.network(path,
-          width: w,
-          height: h,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) =>
-              SizedBox(width: w, height: h, child: fb));
-    }
-    return Image.asset(path,
-        width: w,
-        height: h,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => SizedBox(width: w, height: h, child: fb));
+  Widget _img(String path, double w, double h) => path.startsWith('http')
+      ? Image.network(path, width: w, height: h, fit: BoxFit.cover)
+      : Image.asset(path, width: w, height: h, fit: BoxFit.cover);
+
+  void _goPay() {
+    if (!(form.currentState?.validate() ?? false)) return;
+    form.currentState?.save();
+    Navigator.pushNamed(context, '/paymentDetail', arguments: {
+      'itemsTotal': itemsTotal,
+      'shippingFee': shipping,
+      'discount': 0.0,
+      'grandTotal': grand,
+      'methodLabel': method, // = 'Mobile Banking'
+      'address': {
+        'name': name,
+        'phone': phone,
+        'line1': line1,
+        'district': district,
+        'province': province,
+        'zip': zip,
+      },
+    });
   }
 }

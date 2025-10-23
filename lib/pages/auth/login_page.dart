@@ -116,16 +116,14 @@ class _LoginPageState extends State<LoginPage> {
                     TextFormField(
                       controller: pass,
                       obscureText: _obscure,
-                      enableSuggestions: false,
-                      autocorrect: false,
                       keyboardType: TextInputType.visiblePassword,
                       onFieldSubmitted: (_) => _login(),
                       decoration: InputDecoration(
                         labelText: 'รหัสผ่าน',
                         suffixIcon: IconButton(
                           icon: Icon(_obscure
-                              ? Icons.visibility
-                              : Icons.visibility_off),
+                              ? Icons.visibility_off
+                              : Icons.visibility),
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),

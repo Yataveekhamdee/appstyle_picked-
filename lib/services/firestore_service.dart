@@ -1,139 +1,116 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/product_model.dart';
-import '../models/brand_model.dart';
-import '../models/category_model.dart';
 
 class FirestoreService {
   FirestoreService._();
   static final _db = FirebaseFirestore.instance;
 
-  // ---------- helpers ----------
+  // ----- helpers -----
   static FieldValue get _now => FieldValue.serverTimestamp();
   static String _shortOrderId() {
-    final ms = DateTime.now().millisecondsSinceEpoch.toString();
-    // เอา 6 หลักท้ายพอให้อ่านง่าย (เช่น ORD-123456)
-    return 'ORD-${ms.substring(ms.length - 6)}';
+    final s = DateTime.now().millisecondsSinceEpoch.toString();
+    return 'ORD-${s.substring(s.length - 6)}';
   }
 
-  // -------------------- PRODUCTS --------------------
+  // ========== PRODUCTS ==========
 
-  /// stream รายการสินค้า (เลือก filter ได้)
+  /// สตรีมรายการสินค้า (ใส่ filter ได้เล็กน้อยถ้าต้องการ)
   static Stream<List<Map<String, dynamic>>> watchProducts({
     String? brand,
     String? category,
   }) {
-    Query<Map<String, dynamic>> col = _db.collection('products');
+    Query<Map<String, dynamic>> q = _db.collection('products');
     if (brand != null && brand.isNotEmpty) {
-      col = col.where('brand', isEqualTo: brand);
+      q = q.where('brand', isEqualTo: brand);
     }
     if (category != null && category.isNotEmpty) {
-      col = col.where('category', isEqualTo: category);
+      q = q.where('category', isEqualTo: category);
     }
-    return col.orderBy('updatedAt', descending: true).snapshots().map(
-      (q) => q.docs.map((d) {
+    return q.orderBy('updatedAt', descending: true).snapshots().map(
+      (s) => s.docs.map((d) {
         final m = d.data();
-        // ป้องกัน null/type error และเพิ่ม brandId, categoryId
         return {
-          'id': d.id,
-          'name': (m['name'] ?? '') as String,
-          'brand': (m['brand'] ?? '') as String,
-          'brandId': (m['brandId'] ?? '') as String,
-          'category': (m['category'] ?? '') as String,
-          'categoryId': (m['categoryId'] ?? '') as String,
-          'price': (m['price'] ?? 0) as num,
-          'stock': (m['stock'] ?? 0) as num,
-          'image': (m['image'] ?? '') as String,
+          'id'         : d.id,
+          'name'       : (m['name'] ?? '') as String,
+          'brand'      : (m['brand'] ?? '') as String,
+          'brandId'    : (m['brandId'] ?? '') as String,
+          'category'   : (m['category'] ?? '') as String,
+          'categoryId' : (m['categoryId'] ?? '') as String,
+          'price'      : (m['price'] ?? 0) as num,
+          'stock'      : (m['stock'] ?? 0) as num,
+          'image'      : (m['image'] ?? '') as String,
           'description': (m['description'] ?? '') as String,
-          'updatedAt': m['updatedAt'],
-          'createdAt': m['createdAt'],
+          'createdAt'  : m['createdAt'],
+          'updatedAt'  : m['updatedAt'],
         };
       }).toList(),
     );
   }
 
-  /// ค้นหาชื่อสินค้าแบบ prefix (พิมพ์คำขึ้นต้น)
-  static Stream<List<Map<String, dynamic>>> searchByNamePrefix(String term) {
-    final t = term.trim().toLowerCase();
-    if (t.isEmpty) {
-      return watchProducts();
-    }
-    // ต้องมี index: orderBy(nameLower)
-    return _db
-        .collection('products')
-        .orderBy('nameLower')
-        .startAt([t])
-        .endAt(['$t\uf8ff'])
-        .limit(30)
-        .snapshots()
-        .map(_mapDocs);
+  /// เพิ่ม / อัปเดต / ลบ สินค้า
+  static Future<void> addProduct(Map<String, dynamic> data) {
+    return _db.collection('products').add(data);
   }
 
-  /// เพิ่มสินค้าใหม่
-  static Future<void> addProduct(Map<String, dynamic> productData) async {
-    await _db.collection('products').add(productData);
+  static Future<void> updateProduct(String id, Map<String, dynamic> data) {
+    return _db.collection('products').doc(id).update(data);
   }
 
-  /// อัปเดตสินค้า
-  static Future<void> updateProduct(String productId, Map<String, dynamic> productData) async {
-    await _db.collection('products').doc(productId).update(productData);
+  static Future<void> deleteProduct(String id) {
+    return _db.collection('products').doc(id).delete();
   }
 
-  /// ลบสินค้า
-  static Future<void> deleteProduct(String productId) async {
-    await _db.collection('products').doc(productId).delete();
-  }
-
-  /// ค้นหาด้วย keywords (ใส่ array ในสินค้า) – ไม่ต้องสร้าง index
-  static Stream<List<Map<String, dynamic>>> searchByKeyword(String term) {
-    final t = term.trim().toLowerCase();
-    if (t.isEmpty) return watchProducts();
-    return _db
-        .collection('products')
-        .where('keywords', arrayContains: t)
-        .limit(30)
-        .snapshots()
-        .map(_mapDocs);
-  }
-
-  static List<Map<String, dynamic>> _mapDocs(QuerySnapshot<Map<String, dynamic>> q) =>
-      q.docs.map((d) {
-        final m = d.data();
-        return {
-          'id': d.id,
-          'name': (m['name'] ?? '') as String,
-          'brand': (m['brand'] ?? '') as String,
-          'category': (m['category'] ?? '') as String,
-          'price': (m['price'] ?? 0) as num,
-          'stock': (m['stock'] ?? 0) as num,
-          'image': (m['image'] ?? '') as String,
-          'updatedAt': m['updatedAt'],
-        };
-      }).toList();
-
-  /// สร้าง/แก้สินค้า (ใช้ในหลังบ้าน)
-  static Future<void> saveProduct(String id, Map<String, dynamic> data) async {
+  /// สร้าง/แก้สินค้าแบบ merge + เก็บ nameLower ไว้ค้นหา/เรียง
+  static Future<void> saveProduct(String id, Map<String, dynamic> data) {
     final name = (data['name'] ?? '') as String;
     final map = {
       ...data,
       'nameLower': name.toLowerCase().trim(),
       'updatedAt': _now,
     };
-    await _db.collection('products').doc(id).set(map, SetOptions(merge: true));
+    return _db.collection('products').doc(id).set(map, SetOptions(merge: true));
   }
 
-  // -------------------- CART --------------------
+  /// ดึง “สินค้า + ชื่อแบรนด์/หมวดหมู่” (ครั้งเดียวแบบ Future)
+  /// ใช้ใน ProductProvider.loadProducts()
+  static Future<List<Product>> getProductsWithDetails() async {
+    final raw = await watchProducts().first;
+
+    // ดึงชื่อแบรนด์/หมวดทั้งหมดครั้งเดียว
+    final brandsSnap = await _db.collection('brands').get();
+    final catsSnap   = await _db.collection('categories').get();
+    final brandNames = {for (var d in brandsSnap.docs) d.id: (d.data()['name'] ?? '') as String};
+    final catNames   = {for (var d in catsSnap.docs)   d.id: (d.data()['name'] ?? '') as String};
+
+    // สร้าง Product พร้อมอัดชื่อแบรนด์/หมวด
+    return raw.map((m) {
+      final p = Product.fromMap(m);
+      return Product(
+        id: p.id,
+        name: p.name,
+        brandId: p.brandId,
+        categoryId: p.categoryId,
+        price: p.price,
+        stock: p.stock,
+        image: p.image,
+        description: p.description,
+        updatedAt: p.updatedAt,
+        createdAt: p.createdAt,
+        brandName: brandNames[p.brandId],
+        categoryName: catNames[p.categoryId],
+      );
+    }).toList();
+  }
+
+  // ========== CART ==========
 
   static Stream<List<Map<String, dynamic>>> watchCart(String uid) {
     return _db
-        .collection('users')
-        .doc(uid)
+        .collection('users').doc(uid)
         .collection('cart')
         .orderBy('addedAt', descending: true)
         .snapshots()
-        .map((q) => q.docs.map((d) {
-              final m = d.data();
-              return {'productId': d.id, ...m};
-            }).toList());
+        .map((s) => s.docs.map((d) => {'productId': d.id, ...d.data()}).toList());
   }
 
   static Future<void> addToCart(String uid, String productId, {int qty = 1}) {
@@ -149,29 +126,39 @@ class FirestoreService {
     });
   }
 
-  static Future<void> removeFromCart(String uid, String productId) =>
-      _db.collection('users').doc(uid).collection('cart').doc(productId).delete();
+  static Future<void> removeFromCart(String uid, String productId) {
+    return _db.collection('users').doc(uid).collection('cart').doc(productId).delete();
+  }
 
-  // -------------------- ORDERS --------------------
+  /// เคลียร์ตะกร้าหลังสั่งซื้อ
+  static Future<void> clearUserCart(String uid) async {
+    final q = await _db.collection('users').doc(uid).collection('cart').get();
+    final b = _db.batch();
+    for (final d in q.docs) {
+      b.delete(d.reference);
+    }
+    await b.commit();
+  }
 
-  /// สร้างออเดอร์ที่คอลเลกชันราก 'orders'
-  /// - ถ้าอยากกำหนดไอดีเอง ให้ใส่ [orderId]; ถ้าไม่ใส่จะใช้ short id อัตโนมัติ (เช่น ORD-123456)
+  // ========== ORDERS ==========
+
+  /// สร้างออเดอร์ (id สั้นอ่านง่าย) + คัดลอก ref ไป /users/{uid}/orders (ออปชัน)
   static Future<String> createOrder({
     required List<Map<String, dynamic>> items,
-    required Map<String, dynamic> address,     // {name,line1,district,province,zip,phone}
+    required Map<String, dynamic> address, // {name,line1,district,province,zip,phone}
     required double itemsTotal,
     required double shippingFee,
     required double grandTotal,
-    required String paymentMethod,             // 'บัตรเครดิต/เดบิต' หรือ 'Mobile Banking' เป็นต้น
-    required String status,                    // 'pending' | 'paid' | 'preparing' | 'shipped' ...
-    required String userId,                    // uid หรือ 'guest'
-    String? orderId,                           // << เพิ่ม: ระบุรหัสเองได้
+    required String paymentMethod,         // 'Mobile Banking' ฯลฯ
+    required String status,                // 'pending'|'paid'|'preparing'|'shipped'...
+    required String userId,                // uid หรือ 'guest'
+    String? orderId,
   }) async {
-    final customId = orderId?.trim().isNotEmpty == true ? orderId!.trim() : _shortOrderId();
+    final id  = (orderId?.trim().isNotEmpty ?? false) ? orderId!.trim() : _shortOrderId();
+    final ref = _db.collection('orders').doc(id);
 
-    final ref = _db.collection('orders').doc(customId);
-    final payload = {
-      'orderId'      : customId,               // เก็บซ้ำใน field ด้วย เผื่อ query/แสดงผล
+    await ref.set({
+      'orderId'      : id,
       'userId'       : userId,
       'items'        : items,
       'address'      : address,
@@ -179,230 +166,33 @@ class FirestoreService {
       'shippingFee'  : shippingFee,
       'grandTotal'   : grandTotal,
       'paymentMethod': paymentMethod,
-      'status'       : status,                 // ใช้ค่านี้ให้ admin filter ได้
+      'status'       : status,
+      'statusLower'  : status.toLowerCase(),
       'createdAt'    : _now,
       'updatedAt'    : _now,
-      // field ที่ช่วยค้นหา/เรียง
-      'statusLower'  : status.toLowerCase(),
-    };
+    });
 
-    await ref.set(payload);
-
-    // (ออปชัน) เก็บซ้ำให้ผู้ใช้ดูประวัติที่ /users/{uid}/orders
     if (userId.isNotEmpty && userId != 'guest') {
-      final uref = _db.collection('users').doc(userId).collection('orders').doc(customId);
-      await uref.set({'orderRef': ref.path, 'createdAt': _now});
+      await _db
+          .collection('users').doc(userId)
+          .collection('orders').doc(id)
+          .set({'orderRef': ref.path, 'createdAt': _now});
     }
-
-    return customId;
+    return id;
   }
 
-  /// stream ออเดอร์สำหรับหน้าแอดมิน (ระบุสถานะที่อยากดู)
+  /// สตรีมออเดอร์ (ใช้ในหลังบ้าน)
   static Stream<List<Map<String, dynamic>>> watchOrders({
     List<String>? statuses, // เช่น ['paid','preparing']
     int limit = 50,
   }) {
-    Query<Map<String, dynamic>> col =
+    Query<Map<String, dynamic>> q =
         _db.collection('orders').orderBy('createdAt', descending: true);
     if (statuses != null && statuses.isNotEmpty) {
-      col = col.where('status', whereIn: statuses);
+      q = q.where('status', whereIn: statuses);
     }
-    return col.limit(limit).snapshots().map((q) => q.docs.map((d) {
-          final m = d.data();
-          return {'id': d.id, ...m};
-        }).toList());
-  }
-
-  /// (ออปชัน) เคลียร์ตะกร้าของผู้ใช้หลังสั่งซื้อเสร็จ
-  static Future<void> clearUserCart(String uid) async {
-    final cart = await _db.collection('users').doc(uid).collection('cart').get();
-    final batch = _db.batch();
-    for (final d in cart.docs) {
-      batch.delete(d.reference);
-    }
-    await batch.commit();
-  }
-
-  // -------------------- BRANDS --------------------
-
-  /// ดึงข้อมูลแบรนด์ทั้งหมด
-  static Stream<List<Brand>> watchBrands() {
-    return _db.collection('brands').orderBy('name').snapshots().map(
-          (snapshot) => snapshot.docs.map((doc) => Brand.fromFirestore(doc)).toList(),
-        );
-  }
-
-  /// ดึงข้อมูลแบรนด์ตาม ID
-  static Future<Brand?> getBrandById(String brandId) async {
-    try {
-      final doc = await _db.collection('brands').doc(brandId).get();
-      if (doc.exists) {
-        return Brand.fromFirestore(doc);
-      }
-      return null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// ดึงข้อมูลแบรนด์หลายตัวพร้อมกัน
-  static Future<Map<String, Brand>> getBrandsByIds(List<String> brandIds) async {
-    final Map<String, Brand> brands = {};
-    for (final brandId in brandIds) {
-      try {
-        final brand = await getBrandById(brandId);
-        if (brand != null) {
-          brands[brandId] = brand;
-        }
-      } catch (_) {
-        // Skip error brands
-      }
-    }
-    return brands;
-  }
-
-  // -------------------- CATEGORIES --------------------
-
-  /// ดึงข้อมูลหมวดหมู่ทั้งหมด
-  static Stream<List<Category>> watchCategories() {
-    return _db.collection('categories').orderBy('name').snapshots().map(
-          (snapshot) => snapshot.docs.map((doc) => Category.fromFirestore(doc)).toList(),
-        );
-  }
-
-  /// ดึงข้อมูลหมวดหมู่ตาม ID
-  static Future<Category?> getCategoryById(String categoryId) async {
-    try {
-      final doc = await _db.collection('categories').doc(categoryId).get();
-      if (doc.exists) {
-        return Category.fromFirestore(doc);
-      }
-      return null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// ดึงข้อมูลหมวดหมู่หลายตัวพร้อมกัน
-  static Future<Map<String, Category>> getCategoriesByIds(List<String> categoryIds) async {
-    final Map<String, Category> categories = {};
-    for (final categoryId in categoryIds) {
-      try {
-        final category = await getCategoryById(categoryId);
-        if (category != null) {
-          categories[categoryId] = category;
-        }
-      } catch (_) {
-        // Skip error categories
-      }
-    }
-    return categories;
-  }
-
-  // -------------------- PRODUCTS WITH BRAND/CATEGORY INFO --------------------
-
-  /// ดึงข้อมูลสินค้าพร้อมข้อมูลแบรนด์และหมวดหมู่ (Stream)
-  static Stream<List<Product>> watchProductsWithDetails() {
-    return watchProducts().asyncMap((productsData) async {
-      final List<Product> products = [];
-
-      // ดึงข้อมูลแบรนด์และหมวดหมู่ทั้งหมด
-      final brandsSnapshot = await _db.collection('brands').get();
-      final categoriesSnapshot = await _db.collection('categories').get();
-
-      final Map<String, String> brandNames = {};
-      final Map<String, String> categoryNames = {};
-
-      for (final doc in brandsSnapshot.docs) {
-        brandNames[doc.id] = doc.data()['name'] ?? '';
-      }
-
-      for (final doc in categoriesSnapshot.docs) {
-        categoryNames[doc.id] = doc.data()['name'] ?? '';
-      }
-
-      // สร้าง Product objects พร้อมชื่อแบรนด์และหมวดหมู่
-      for (final data in productsData) {
-        final product = Product.fromMap(data);
-        final productWithDetails = Product(
-          id: product.id,
-          name: product.name,
-          brandId: product.brandId,
-          categoryId: product.categoryId,
-          price: product.price,
-          stock: product.stock,
-          image: product.image,
-          description: product.description,
-          updatedAt: product.updatedAt,
-          createdAt: product.createdAt,
-          brandName: brandNames[product.brandId],
-          categoryName: categoryNames[product.categoryId],
-        );
-        products.add(productWithDetails);
-      }
-
-      return products;
-    });
-  }
-
-  /// ดึงข้อมูลสินค้าพร้อมข้อมูลแบรนด์และหมวดหมู่ (Future)
-  static Future<List<Product>> getProductsWithDetails() async {
-    print('Debug FirestoreService - getProductsWithDetails START');
-    final productsData = await watchProducts().first;
-    print('Debug FirestoreService - Raw products data: ${productsData.length}');
-
-    for (var data in productsData) {
-      print('Debug FirestoreService - Raw data: $data');
-    }
-
-    final List<Product> products = [];
-
-    final brandsSnapshot = await _db.collection('brands').get();
-    final categoriesSnapshot = await _db.collection('categories').get();
-
-    print('Debug FirestoreService - Brands count: ${brandsSnapshot.docs.length}');
-    print('Debug FirestoreService - Categories count: ${categoriesSnapshot.docs.length}');
-
-    final Map<String, String> brandNames = {};
-    final Map<String, String> categoryNames = {};
-
-    for (final doc in brandsSnapshot.docs) {
-      final brandName = doc.data()['name'] ?? '';
-      brandNames[doc.id] = brandName;
-      print('Debug FirestoreService - Brand: ${doc.id} -> $brandName');
-    }
-
-    for (final doc in categoriesSnapshot.docs) {
-      final categoryName = doc.data()['name'] ?? '';
-      categoryNames[doc.id] = categoryName;
-      print('Debug FirestoreService - Category: ${doc.id} -> $categoryName');
-    }
-
-    for (final data in productsData) {
-      final product = Product.fromMap(data);
-      print('Debug FirestoreService - Product fromMap: brandId=${product.brandId}, categoryId=${product.categoryId}');
-
-      final productWithDetails = Product(
-        id: product.id,
-        name: product.name,
-        brandId: product.brandId,
-        categoryId: product.categoryId,
-        price: product.price,
-        stock: product.stock,
-        image: product.image,
-        description: product.description,
-        updatedAt: product.updatedAt,
-        createdAt: product.createdAt,
-        brandName: brandNames[product.brandId],
-        categoryName: categoryNames[product.categoryId],
-      );
-
-      print('Debug FirestoreService - Product with details: brandId=${productWithDetails.brandId}, brandName=${productWithDetails.brandName}');
-      products.add(productWithDetails);
-    }
-
-    print('Debug FirestoreService - Final products count: ${products.length}');
-    print('Debug FirestoreService - getProductsWithDetails END');
-    return products;
+    return q.limit(limit).snapshots().map(
+      (s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList(),
+    );
   }
 }

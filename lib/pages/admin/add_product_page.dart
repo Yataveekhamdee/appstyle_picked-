@@ -1,7 +1,6 @@
 // lib/pages/admin/add_product_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../providers/product_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../services/firestore_service.dart';
@@ -14,22 +13,21 @@ class AddProductPage extends StatefulWidget {
 }
 
 class _AddProductPageState extends State<AddProductPage> {
-  final _form  = GlobalKey<FormState>();
-  final _name  = TextEditingController();
+  final _form = GlobalKey<FormState>();
+  final _name = TextEditingController();
   final _price = TextEditingController();
   final _stock = TextEditingController();
-  final _desc  = TextEditingController();
+  final _desc = TextEditingController();
 
-  String? _categoryId;
-  String? _imageUrl;          // ได้จากหน้า ImagePickerPage
+  String? _categoryId, _imageUrl;
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CategoryProvider>().loadCategories();
-    });
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => context.read<CategoryProvider>().loadCategories(),
+    );
   }
 
   @override
@@ -43,8 +41,40 @@ class _AddProductPageState extends State<AddProductPage> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final categories = context.watch<CategoryProvider>().activeCategories;
+    final cats = context.watch<CategoryProvider>().activeCategories;
+
+    // --- ตัวตรวจง่าย ๆ (คืน null = ผ่าน) ---
+    String? vReq(String? v) =>
+        (v == null || v.trim().isEmpty) ? 'กรุณากรอกข้อมูล' : null;
+    String? vPrice(String? v) {
+      final d = double.tryParse((v ?? '').trim());
+      if (d == null) return 'กรอกราคาเป็นตัวเลข';
+      if (d <= 0) return 'ราคาต้องมากกว่า 0';
+      return null;
+    }
+
+    String? vStock(String? v) {
+      final n = int.tryParse((v ?? '').trim());
+      if (n == null) return 'กรอกสต็อกเป็นตัวเลข';
+      if (n < 0) return 'สต็อกต้องไม่ติดลบ';
+      return null;
+    }
+
+    Widget field({
+      required TextEditingController c,
+      required String label,
+      String? hint,
+      String? Function(String?)? validator,
+      TextInputType? type,
+      int maxLines = 1,
+    }) =>
+        TextFormField(
+          controller: c,
+          validator: validator,
+          keyboardType: type,
+          maxLines: maxLines,
+          decoration: InputDecoration(labelText: label, hintText: hint),
+        );
 
     return Scaffold(
       appBar: AppBar(title: const Text('เพิ่มสินค้าใหม่')),
@@ -53,9 +83,9 @@ class _AddProductPageState extends State<AddProductPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // รูปภาพสินค้า
             Row(children: [
-              const Text('รูปภาพสินค้า', style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text('รูปภาพสินค้า',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
               const Spacer(),
               ElevatedButton.icon(
                 onPressed: _pickImage,
@@ -64,7 +94,6 @@ class _AddProductPageState extends State<AddProductPage> {
               ),
             ]),
             const SizedBox(height: 8),
-
             if ((_imageUrl ?? '').isNotEmpty) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
@@ -82,56 +111,53 @@ class _AddProductPageState extends State<AddProductPage> {
               ),
               const SizedBox(height: 16),
             ],
-
-            // ข้อมูลสินค้า
-            _field(controller: _name, label: 'ชื่อสินค้า', hint: 'กรอกชื่อสินค้า', validator: _req),
+            field(
+                c: _name,
+                label: 'ชื่อสินค้า',
+                hint: 'กรอกชื่อสินค้า',
+                validator: vReq),
             const SizedBox(height: 12),
-
-            // หมวดหมู่ (ดึงจาก Firestore)
             DropdownButtonFormField<String>(
               value: _categoryId,
+              decoration: const InputDecoration(labelText: 'หมวดหมู่'),
               items: [
-                for (final c in categories)
-                  DropdownMenuItem(value: c.id, child: Text(c.name)),
+                for (final c in cats)
+                  DropdownMenuItem(value: c.id, child: Text(c.name))
               ],
               onChanged: (v) => setState(() => _categoryId = v),
-              validator: _req,
-              decoration: const InputDecoration(labelText: 'หมวดหมู่'),
+              validator: (v) =>
+                  v == null || v.isEmpty ? 'กรุณาเลือกหมวดหมู่' : null,
             ),
             const SizedBox(height: 12),
-
-            _field(
-              controller: _price,
-              label: 'ราคา (บาท)',
-              hint: '0',
-              keyboardType: TextInputType.number,
-              validator: _priceGt0,
-            ),
+            field(
+                c: _price,
+                label: 'ราคา (บาท)',
+                hint: '0',
+                type: TextInputType.number,
+                validator: vPrice),
             const SizedBox(height: 12),
-
-            _field(
-              controller: _stock,
-              label: 'จำนวนสต็อก',
-              hint: '0',
-              keyboardType: TextInputType.number,
-              validator: _stockGte0,
-            ),
+            field(
+                c: _stock,
+                label: 'จำนวนสต็อก',
+                hint: '0',
+                type: TextInputType.number,
+                validator: vStock),
             const SizedBox(height: 12),
-
-            _field(
-              controller: _desc,
-              label: 'รายละเอียด (ไม่บังคับ)',
-              hint: 'จุดเด่น/รายละเอียดเพิ่มเติม',
-              maxLines: 3,
-            ),
+            field(
+                c: _desc,
+                label: 'รายละเอียด (ไม่บังคับ)',
+                hint: 'จุดเด่น/รายละเอียดเพิ่มเติม',
+                maxLines: 3),
             const SizedBox(height: 20),
-
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2))
                     : const Text('บันทึกสินค้า'),
               ),
             ),
@@ -142,86 +168,51 @@ class _AddProductPageState extends State<AddProductPage> {
     );
   }
 
-  // ---------- Helpers ----------
-  String? _req(String? v) => (v == null || v.trim().isEmpty) ? 'กรุณากรอกข้อมูล' : null;
-
-  String? _priceGt0(String? v) {
-    final d = double.tryParse(v ?? '');
-    if (d == null) return 'กรอกราคาเป็นตัวเลข';
-    if (d <= 0) return 'ราคาต้องมากกว่า 0';
-    return null;
-  }
-
-  String? _stockGte0(String? v) {
-    final n = int.tryParse(v ?? '');
-    if (n == null) return 'กรอกสต็อกเป็นตัวเลข';
-    if (n < 0) return 'สต็อกต้องไม่ติดลบ';
-    return null;
-  }
-
-  Widget _field({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    String? Function(String?)? validator,
-    TextInputType? keyboardType,
-    int maxLines = 1,
-  }) {
-    return TextFormField(
-      controller: controller,
-      validator: validator,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      decoration: InputDecoration(labelText: label, hintText: hint),
-    );
-  }
-
-  // ---------- Actions ----------
   Future<void> _pickImage() async {
     final url = await Navigator.push<String>(
-      context,
-      MaterialPageRoute(builder: (_) => const ImagePickerPage()),
-    );
-    if (url != null && url.isNotEmpty) setState(() => _imageUrl = url);
+        context, MaterialPageRoute(builder: (_) => const ImagePickerPage()));
+    if (url?.isNotEmpty == true) setState(() => _imageUrl = url);
   }
 
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
     if ((_imageUrl ?? '').isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('กรุณาเลือกรูปสินค้า')));
+      _snack('กรุณาเลือกรูปสินค้า');
+      return;
+    }
+    if (_categoryId == null) {
+      _snack('กรุณาเลือกหมวดหมู่');
       return;
     }
 
     setState(() => _saving = true);
     try {
-      // ชื่อหมวดหมู่สำหรับแสดงผล (product list จะโชว์สวย)
       final cats = context.read<CategoryProvider>().activeCategories;
-      final categoryName = cats.firstWhere((c) => c.id == _categoryId).name;
-
+      final categoryName = cats.firstWhere((c) => c.id == _categoryId!).name;
       final now = DateTime.now();
+
       await FirestoreService.addProduct({
-        'name'         : _name.text.trim(),
-        'categoryId'   : _categoryId,
-        'categoryName' : categoryName,
-        'price'        : double.parse(_price.text),
-        'stock'        : int.parse(_stock.text),
-        'image'        : _imageUrl,
-        'description'  : _desc.text.trim(),
-        'createdAt'    : now,
-        'updatedAt'    : now,
-        
+        'name': _name.text.trim(),
+        'categoryId': _categoryId,
+        'categoryName': categoryName,
+        'price': double.parse(_price.text.trim()),
+        'stock': int.parse(_stock.text.trim()),
+        'image': _imageUrl,
+        'description': _desc.text.trim(),
+        'createdAt': now,
+        'updatedAt': now,
       });
 
       if (!mounted) return;
       context.read<ProductProvider>().loadProducts();
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
-      );
+      if (mounted) _snack('เกิดข้อผิดพลาด: $e');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
+
+  void _snack(String m) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 }

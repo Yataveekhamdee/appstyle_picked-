@@ -11,7 +11,7 @@ class _SignupPageState extends State<SignupPage> {
   final _form = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _pass  = TextEditingController();
-  bool _hide = true, _loading = false;
+  bool _obscure = true, _loading = false;
 
   @override
   void dispose() {
@@ -81,21 +81,25 @@ class _SignupPageState extends State<SignupPage> {
                 },
               ),
               const SizedBox(height: 12),
+
               TextFormField(
                 controller: _pass,
-                obscureText: _hide,
-                decoration: deco(
-                  'รหัสผ่าน',
-                  Icons.lock_outline,
+                obscureText: _obscure,
+                  keyboardType: TextInputType.visiblePassword,
+                  decoration: InputDecoration(
+                  labelText: 'รหัสผ่าน',
                   suffix: IconButton(
-                    icon: Icon(_hide ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => _hide = !_hide),
+                    icon: Icon(_obscure
+                    ? Icons.visibility_off
+                    : Icons.visibility),
+                    onPressed: () => setState(() =>_obscure = _obscure),
                   ),
                 ),
                 validator: (v) =>
                     (v != null && v.length >= 6) ? null : 'อย่างน้อย 6 ตัวอักษร',
                 onFieldSubmitted: (_) => _signup(),
               ),
+              
               const SizedBox(height: 20),
               SizedBox(
                 height: 48,

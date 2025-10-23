@@ -16,29 +16,27 @@ class HomePage extends StatelessWidget {
             icon: const Icon(Icons.shopping_cart_outlined),
             onPressed: () => Navigator.pushNamed(context, '/cart'),
           ),
-          
           IconButton(
-          icon: const Icon(Icons.person),
+            icon: const Icon(Icons.person),
             onPressed: () => Navigator.pushNamed(context, '/admin/login'),
           )
-
         ],
       ),
-
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _banner('assets/images/unigam/uni04.jpg', 'สินค้าแนะนำ'),
           gap(12),
           Row(children: [
-            _promo(cs, Icons.local_shipping_outlined, 'จัดส่งฟรี', 'ส่งของภายใน'),
+            _promo(
+                cs, Icons.local_shipping_outlined, 'จัดส่งฟรี', 'ส่งของภายใน'),
             const SizedBox(width: 12),
             _promo(cs, Icons.card_giftcard_outlined, 'ครบ 500.-', 'แถมสร้อยคอ'),
           ]),
           gap(16),
-          const Text('Brands', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+          const Text('Brands',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
           gap(10),
-
           GridView.count(
             crossAxisCount: 2,
             mainAxisSpacing: 12,
@@ -46,14 +44,15 @@ class HomePage extends StatelessWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             children: const [
-              _BrandCard('Duex',     'assets/images/duex/duex00.jpg'),
+              _BrandCard('Duex', 'assets/images/duex/duex00.jpg'),
               _BrandCard('Feelfree', 'assets/images/feelfree/feelfree00.jpg'),
-              _BrandCard('Stylist',  'assets/images/stylish/stylish00.jpg'),
-              _BrandCard('Unigam',   'assets/images/unigam/uni00.jpg'),
+              _BrandCard('Stylist', 'assets/images/stylish/stylish00.jpg'),
+              _BrandCard('Unigam', 'assets/images/unigam/uni00.jpg'),
             ],
           ),
           gap(16),
-          _banner('assets/images/unigam/uni04.jpg', 'Get your own clothes\nand style!'),
+          _banner('assets/images/unigam/uni04.jpg',
+              'Get your own clothes\nand style!'),
           gap(24),
         ],
       ),
@@ -63,10 +62,12 @@ class HomePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _navItem(Icons.home_outlined, 'หน้าหลัก', () {}),
-            _navItem(Icons.search, 'หมวดหมู่', () => Navigator.pushNamed(context, '/products')),
-            _navItem(Icons.shopping_cart_outlined, 'ตะกร้า', () => Navigator.pushNamed(context, '/cart')),
-            _navItem(Icons.person_outline, 'ฉัน', () => Navigator.pushNamed(context, '/profile')),
-
+            _navItem(Icons.search, 'หมวดหมู่',
+                () => Navigator.pushNamed(context, '/products')),
+            _navItem(Icons.shopping_cart_outlined, 'ตะกร้า',
+                () => Navigator.pushNamed(context, '/cart')),
+            _navItem(Icons.person_outline, 'ฉัน',
+                () => Navigator.pushNamed(context, '/profile')),
           ],
         ),
       ),
@@ -78,19 +79,23 @@ class HomePage extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Image.asset(asset, height: 160, width: double.infinity, fit: BoxFit.cover),
+            Image.asset(asset,
+                height: 160, width: double.infinity, fit: BoxFit.cover),
             Container(height: 160, color: Colors.black26),
             Text(text,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
                   shadows: [Shadow(blurRadius: 8, color: Colors.black54)],
                 )),
           ],
         ),
       );
 
-  static Widget _promo(ColorScheme cs, IconData icon, String t, String s) => Expanded(
+  static Widget _promo(ColorScheme cs, IconData icon, String t, String s) =>
+      Expanded(
         child: Container(
           height: 48,
           decoration: BoxDecoration(
@@ -116,7 +121,8 @@ class HomePage extends StatelessWidget {
         ),
       );
 
-  static Widget _navItem(IconData i, String t, VoidCallback onTap) => GestureDetector(
+  static Widget _navItem(IconData i, String t, VoidCallback onTap) =>
+      GestureDetector(
         onTap: onTap,
         child: SizedBox(
           width: 72,
@@ -156,16 +162,23 @@ class _BrandCard extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    colors: [Color(0xB3000000), Color(0x33000000), Colors.transparent],
+                    colors: [
+                      Color(0xB3000000),
+                      Color(0x33000000),
+                      Colors.transparent
+                    ],
                   ),
                 ),
                 child: SizedBox.expand(),
               ),
             ),
             Positioned(
-              left: 10, right: 10, bottom: 8,
+              left: 10,
+              right: 10,
+              bottom: 8,
               child: Text(title,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w800)),
             ),
           ]),
         ),

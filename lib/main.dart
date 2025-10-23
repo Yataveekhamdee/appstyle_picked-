@@ -71,12 +71,13 @@ class MyApp extends StatelessWidget {
           '/signup': (_) => const SignupPage(),
           '/profile': (_) => const ProfilePage(),
 
-          '/order':      (_) => const HomePage(),
           '/home'  : (_) => const HomePage(),
+          '/cart': (_) => const CartPage(),
+
           '/products': (_) => const ProductListPage(),
           '/checkout': (_) => const CheckoutPage(),
           '/paymentDetail': (_) => const PaymentDetailPage(),
-          '/cart': (_) => const CartPage(),
+          '/order':      (_) => const HomePage(),
           '/orderPreparing': (_) => const OrderPreparingPage(),
 
           // admin

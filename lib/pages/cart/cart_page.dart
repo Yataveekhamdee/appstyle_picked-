@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';  //ตะกร้าหน้าว่าง
+// lib/pages/cart/cart_page.dart
+import 'package:flutter/material.dart';
 import '../../providers/cart_store.dart';
 
 class CartPage extends StatelessWidget {
@@ -6,90 +7,68 @@ class CartPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    // ให้ทั้งหน้าฟังการเปลี่ยนแปลงของ cartStore ทีเดียว
     return AnimatedBuilder(
       animation: cartStore,
       builder: (_, __) {
+        final items = cartStore.items;
         return Scaffold(
           appBar: AppBar(
-            centerTitle: true,
-            title: Text('ตะกร้าสินค้า (${cartStore.items.length})'),
-          ),
-
-          // ── รายการสินค้าในตะกร้า ─────────────────────────────
-          body: cartStore.items.isEmpty
+              centerTitle: true, title: Text('ตะกร้าสินค้า (${items.length})')),
+          body: items.isEmpty
               ? const Center(child: Text('ตะกร้ายังว่างเปล่า'))
-              : ListView.separated(
+              : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(12, 12, 12, 120),
-                  itemCount: cartStore.items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemCount: items.length,
                   itemBuilder: (_, i) {
-                    final it = cartStore.items[i];
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFEAEAEA)),
-                      ),
+                    final it = items[i];
+                    return Card(
                       child: ListTile(
-                        contentPadding: const EdgeInsets.all(10),
                         leading: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: _img(it.image),
                         ),
-                        title: Text(
-                          it.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text(
-                            '฿${it.price.toStringAsFixed(0)}',
-                            style: TextStyle(color: cs.error, fontWeight: FontWeight.w900),
-                          ),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _iconMini(Icons.remove, () => cartStore.dec(it)),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                              child: Text('${it.qty}', style: const TextStyle(fontWeight: FontWeight.w800)),
-                            ),
-                            _iconMini(Icons.add, () => cartStore.inc(it)),
-                            _iconMini(Icons.delete_outline, () => cartStore.remove(it)),
-                          ],
-                        ),
+                        title: Text(it.title,
+                            maxLines: 2, overflow: TextOverflow.ellipsis),
+                        subtitle: Text('฿${it.price.toStringAsFixed(0)}',
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontWeight: FontWeight.w800)),
+                        trailing:
+                            Row(mainAxisSize: MainAxisSize.min, 
+                            children: [
+                          IconButton(
+                              icon: const Icon(Icons.remove, size: 18),
+                              onPressed: () => cartStore.dec(it)),
+                          Text('${it.qty}',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w700)),
+                          IconButton(
+                              icon: const Icon(Icons.add, size: 18),
+                              onPressed: () => cartStore.inc(it)),
+                          IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 18),
+                              onPressed: () => cartStore.remove(it)),
+                        ]),
                       ),
                     );
                   },
                 ),
-
-          // ── สรุปราคา + ปุ่มไปชำระเงิน ─────────────────────────
           bottomNavigationBar: SafeArea(
-            top: false,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                boxShadow: [BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, -2))],
-              ),
-              child: Row(
-                children: [
-                  const Expanded(child: Text('ยอดชำระ', style: TextStyle(fontSize: 12, color: Colors.black54))),
-                  Text('฿${cartStore.total.toStringAsFixed(0)}',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                  const SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: cartStore.items.isEmpty ? null : () => Navigator.pushNamed(context, '/checkout'),
-                    child: const Text('ชำระเงิน'),
-                  ),
-                ],
-              ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              child: Row(children: [
+                const Text('ยอดชำระ'),
+                const Spacer(),
+                Text('฿${cartStore.total.toStringAsFixed(0)}',
+                    style: const TextStyle(fontWeight: FontWeight.w900)),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: items.isEmpty
+                      ? null
+                      : () => Navigator.pushNamed(context, '/checkout'),
+                  child: const Text('ชำระเงิน'),
+                ),
+              ]),
             ),
           ),
         );
@@ -97,20 +76,7 @@ class CartPage extends StatelessWidget {
     );
   }
 
-  // — helpers ——————————————————————————————————————————————
-  Widget _img(String path) {
-    const w = 64.0, h = 64.0;
-    final fallback = const ColoredBox(color: Color(0xFFEFEFEF));
-    if (path.startsWith('http')) {
-      return Image.network(path, width: w, height: h, fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => SizedBox(width: w, height: h, child: fallback),
-      );
-    }
-    return Image.asset(path, width: w, height: h, fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => SizedBox(width: w, height: h, child: fallback),
-    );
-  }
-
-  Widget _iconMini(IconData i, VoidCallback onTap) =>
-      InkWell(onTap: onTap, child: SizedBox(width: 28, height: 32, child: Icon(i, size: 16)));
+  Widget _img(String path) => path.startsWith('http')
+      ? Image.network(path, width: 64, height: 64, fit: BoxFit.cover)
+      : Image.asset(path, width: 64, height: 64, fit: BoxFit.cover);
 }
