@@ -106,7 +106,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       );
     }
 
-    // ---------------- UI หลัก ----------------
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('จัดการสินค้า'),
@@ -201,3 +201,4 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 }
+

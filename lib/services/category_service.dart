@@ -2,43 +2,49 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/category_model.dart';
 
 class CategoryService {
-  CategoryService._();
+  CategoryService._(); // ป้องกันไม่ให้ new จากข้างนอก
   static final _db = FirebaseFirestore.instance;
   static const _col = 'categories';
 
-  // ========== READ ==========
-  /// ดูหมวดหมู่ทั้งหมด (เรียงตามชื่อ)
+  // ================= READ =================
+
+  /// ดึงหมวดหมู่ทั้งหมด (เรียงตามชื่อ) แบบเรียลไทม์
   static Stream<List<Category>> watchCategories() {
-    return _db.collection(_col).orderBy('name').snapshots().map(
-      (s) => s.docs.map(Category.fromFirestore).toList(),
-    );
+    return _db
+        .collection(_col)
+        .orderBy('name')
+        .snapshots()
+        .map((snap) => snap.docs.map(Category.fromFirestore).toList());
   }
 
-  /// ดูเฉพาะหมวดที่เปิดใช้งาน
+  /// ดึงเฉพาะหมวดหมู่ที่เปิดใช้งาน (isActive == true)
+  /// ใช้เวลาจะแสดงให้ลูกค้าเลือกหมวดที่ขายจริง
   static Stream<List<Category>> watchActiveCategories() {
     return _db
         .collection(_col)
         .where('isActive', isEqualTo: true)
         .orderBy('name')
         .snapshots()
-        .map((s) => s.docs.map(Category.fromFirestore).toList());
+        .map((snap) => snap.docs.map(Category.fromFirestore).toList());
   }
 
-  /// ดึงหมวดหมู่รายตัว
+  /// ดึงข้อมูลหมวดหมู่ทีละตัว (ใช้เวลาแก้ไข)
   static Future<Category?> getCategoryById(String id) async {
     final doc = await _db.collection(_col).doc(id).get();
     return doc.exists ? Category.fromFirestore(doc) : null;
   }
 
-  // ========== WRITE ==========
-  /// เพิ่มหมวดหมู่ (กันชื่อซ้ำ)
+  // ================= WRITE =================
+
+  /// เพิ่มหมวดหมู่ใหม่
+  /// (เช็คไม่ให้ชื่อซ้ำ เพื่อป้องกันหมวด "กระเป๋า" ซ้ำกันหลายอัน)
   static Future<String> addCategory(Category c) async {
-    // กันชื่อซ้ำด้วย field name
     final dup = await _db
         .collection(_col)
         .where('name', isEqualTo: c.name)
         .limit(1)
         .get();
+
     if (dup.docs.isNotEmpty) {
       throw Exception('ชื่อหมวดหมู่นี้มีอยู่แล้ว');
     }
@@ -48,10 +54,12 @@ class CategoryService {
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+
     return ref.id;
   }
 
-  /// แก้ไขหมวดหมู่ (กันชื่อซ้ำ โดยยกเว้นตัวเอง)
+  /// อัปเดตข้อมูลหมวดหมู่เดิม
+  /// (ถ้าจะเปลี่ยนชื่อ ก็ยังป้องกันซ้ำอยู่)
   static Future<void> updateCategory(Category c) async {
     final dup = await _db
         .collection(_col)
@@ -59,7 +67,10 @@ class CategoryService {
         .limit(1)
         .get();
 
-    if (dup.docs.isNotEmpty && dup.docs.first.id != c.id) {
+    final hasDupOtherDoc =
+        dup.docs.isNotEmpty && dup.docs.first.id != c.id;
+
+    if (hasDupOtherDoc) {
       throw Exception('ชื่อหมวดหมู่นี้มีอยู่แล้ว');
     }
 
@@ -69,84 +80,48 @@ class CategoryService {
     });
   }
 
-  /// ลบหมวดหมู่ (ห้ามลบถ้ายังมีสินค้าอ้างอิง)
-  /// ✅ เช็คด้วย categoryId โดยตรง — ง่ายและแม่นสุด
+  /// ลบหมวดหมู่
+  /// ป้องกันการลบหมวดที่ยังมีสินค้าใช้อยู่
   static Future<void> deleteCategory(String categoryId) async {
-    final productUsing = await _db
+    // ตรวจว่ายังมีสินค้าที่ผูกกับหมวดนี้ไหม
+    final inUse = await _db
         .collection('products')
         .where('categoryId', isEqualTo: categoryId)
         .limit(1)
         .get();
-    if (productUsing.docs.isNotEmpty) {
+
+    if (inUse.docs.isNotEmpty) {
       throw Exception('ลบไม่ได้: ยังมีสินค้าอยู่ในหมวดนี้');
     }
+
     await _db.collection(_col).doc(categoryId).delete();
   }
 
-  /// เปิด/ปิดการใช้งานหมวด
-  static Future<void> toggleCategoryStatus(String categoryId, bool isActive) {
-    return _db.collection(_col).doc(categoryId).update({
+  /// เปิด / ปิด หมวดหมู่ (isActive)
+  /// ใช้สำหรับซ่อนหมวดชั่วคราว โดยไม่ต้องลบจริง
+  static Future<void> toggleCategoryStatus(
+      String categoryId, bool isActive) async {
+    await _db.collection(_col).doc(categoryId).update({
       'isActive': isActive,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
-  // ========== UTILITIES ==========
-  /// อัปเดตตัวเลขจำนวนสินค้าในหมวด (นับจาก products ที่ผูกด้วย categoryId)
-  static Future<void> updateProductCount(String categoryId) async {
-    final total = await _db
-        .collection('products')
-        .where('categoryId', isEqualTo: categoryId)
-        .count()
-        .get(); // ใช้ aggregation API (ถ้ารองรับ) หรือเปลี่ยนเป็น get().then((q)=>q.docs.length)
+  // ================= (ตัวเลือกเสริม) =================
+  // ด้านล่างนี้ "ยังเก็บไว้" ได้ถ้าคุณใช้,
+  // แต่ถ้าอยากให้ไฟล์สั้นสุด สามารถย้ายออกไปไฟล์อื่นเป็น util ก็ได้
 
-    await _db.collection(_col).doc(categoryId).update({
-      'productCount': total.count, // ถ้าโปรเจ็กต์ยังไม่รองรับ .count() ให้ใช้ q.docs.length แทน
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  /// อัปเดตจำนวนสินค้าทุกหมวด (เรียกทีเดียวตอน sync)
-  static Future<void> updateAllProductCounts() async {
-    final cats = await _db.collection(_col).get();
-    for (final d in cats.docs) {
-      await updateProductCount(d.id);
-    }
-  }
-
-  /// ค้นหาหมวดด้วยชื่อ (prefix)
+  /// ค้นหาหมวดหมู่ด้วยชื่อ (ใช้ในหน้าหลังบ้านเวลาพิมพ์ค้นหา)
   static Stream<List<Category>> searchCategories(String query) {
     final q = query.trim();
     if (q.isEmpty) return watchCategories();
+
     return _db
         .collection(_col)
         .orderBy('name')
-        .startAt([q]).endAt(['$q\uf8ff'])
+        .startAt([q])
+        .endAt(['$q\uf8ff'])
         .snapshots()
-        .map((s) => s.docs.map(Category.fromFirestore).toList());
-  }
-
-  /// สร้างหมวดเริ่มต้น (ใช้ครั้งแรก/ทดสอบ)
-  static Future<void> createDefaultCategories() async {
-    final defaults = [
-      {'name': 'เสื้อผ้า', 'description': 'เสื้อผ้าทุกประเภท'},
-      {'name': 'กระเป๋า', 'description': 'กระเป๋าทุกประเภท'},
-      {'name': 'รองเท้า', 'description': 'รองเท้าทุกประเภท'},
-      {'name': 'เครื่องประดับ', 'description': 'เครื่องประดับทุกประเภท'},
-      {'name': 'แว่นตา', 'description': 'แว่นตาและแว่นกันแดด'},
-    ];
-
-    final batch = _db.batch();
-    for (final m in defaults) {
-      final ref = _db.collection(_col).doc();
-      batch.set(ref, {
-        ...m,
-        'isActive': true,
-        'productCount': 0,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    }
-    await batch.commit();
+        .map((snap) => snap.docs.map(Category.fromFirestore).toList());
   }
 }

@@ -3,135 +3,69 @@ import '../models/product_model.dart';
 import '../services/firestore_service.dart';
 
 class ProductProvider extends ChangeNotifier {
-  List<Product> _products = [];
-  List<Product> _filteredProducts = [];
-  String _selectedBrand = '';
-  bool _isLoading = false;
-  String? _error;
+  // --- state หลักของสินค้า ---
+  List<Product> _products = [];         // สินค้าทั้งหมดจาก Firebase
+  List<Product> _filteredProducts = []; // สินค้าที่ถูกกรองแล้ว (เช่นตามแบรนด์ / ค้นหา)
+  String _selectedBrand = '';           // แบรนด์ที่ถูกเลือกตอนนี้
+  bool _isLoading = false;              // ใช้โชว์วงกลมโหลด
+  String? _error;                       // เก็บข้อความ error ถ้าโหลดพัง
 
+  // getter ให้หน้า UI เรียกใช้
   List<Product> get products => _products;
   List<Product> get filteredProducts => _filteredProducts;
   String get selectedBrand => _selectedBrand;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // ฟิลเตอร์แบรนด์ที่มีอยู่
-  static const List<String> availableBrands = [
-    'See All',
-    'stylish',
-    'duex',
-    'feelfree',
-    'unigam'
-  ];
 
-  /// โหลดสินค้าทั้งหมดจาก Firebase พร้อมข้อมูลแบรนด์และหมวดหมู่
+  // โหลดสินค้าจาก Firebase (เรียกตอนเข้าแอป/เข้าเพจสินค้า)
   Future<void> loadProducts() async {
     _setLoading(true);
     _error = null;
 
     try {
-      // ใช้ getProducts แทน watchProductsWithDetails เพื่อรอข้อมูลโหลดเสร็จ
+      // ดึงสินค้าพร้อมข้อมูลแบรนด์และหมวดหมู่ที่ join มาแล้ว
       final productsData = await FirestoreService.getProductsWithDetails();
       _products = productsData;
-      print('Debug ProductProvider - Loaded ${_products.length} products');
-      
-      // Debug: แสดงข้อมูลสินค้าทั้งหมด
-      for (var product in _products) {
-        print('Debug ProductProvider - Product: ${product.name}');
-        print('Debug ProductProvider - Product brandId: ${product.brandId}');
-        print('Debug ProductProvider - Product brand: ${product.brand}');
-      }
-      
+
+      // เริ่มต้นให้รายการที่โชว์ = ทั้งหมด
       _applyFilter();
-      _setLoading(false);
     } catch (e) {
       _error = e.toString();
-      print('Debug ProductProvider - Error loading products: $e');
+    } finally {
       _setLoading(false);
     }
   }
 
-  /// ฟิลเตอร์สินค้าตามแบรนด์ (รองรับทั้ง brandId และ brandName)
-  void filterByBrand(String brand) {
-    print('Debug ProductProvider - filterByBrand: $brand');
-    print('Debug ProductProvider - Before setting _selectedBrand: $_selectedBrand');
-    _selectedBrand = brand;
-    print('Debug ProductProvider - After setting _selectedBrand: $_selectedBrand');
-    print('Debug ProductProvider - About to call _applyFilter');
-    _applyFilter();
-    print('Debug ProductProvider - After calling _applyFilter');
-  }
-
-  /// ค้นหาสินค้าตามชื่อ
-  void searchProducts(String query) {
-    if (query.isEmpty) {
-      _applyFilter();
-      return;
-    }
-
-    _filteredProducts = _products.where((product) {
-      return product.name.toLowerCase().contains(query.toLowerCase()) ||
-             product.brand.toLowerCase().contains(query.toLowerCase());
-    }).toList();
-    notifyListeners();
-  }
-
-  /// ใช้ฟิลเตอร์ปัจจุบันกับรายการสินค้า
+  // ใช้ฟิลเตอร์แบรนด์ปัจจุบัน (_selectedBrand) มากรองรายการ
   void _applyFilter() {
-    print('=== Debug _applyFilter START ===');
-    print('Debug _applyFilter - Selected Brand: "$_selectedBrand"');
-    print('Debug _applyFilter - Selected Brand length: ${_selectedBrand.length}');
-    print('Debug _applyFilter - Total Products: ${_products.length}');
-    
     if (_selectedBrand.isEmpty || _selectedBrand == 'See All') {
       _filteredProducts = List.from(_products);
-      print('Debug _applyFilter - Show all products: ${_filteredProducts.length}');
     } else {
-      print('Debug _applyFilter - Filtering by brand: "$_selectedBrand"');
-      _filteredProducts = _products.where((product) {
-        // ตรวจสอบทั้ง brandId และ brandName
-        final matchBrandId = product.brandId.toLowerCase() == _selectedBrand.toLowerCase();
-        final matchBrandName = product.brand.toLowerCase() == _selectedBrand.toLowerCase();
-        
-        // ตรวจสอบ brandName ที่ได้จาก brandId (ถ้ามี)
-        final matchBrandNameFromId = product.brandName != null && 
-            product.brandName!.toLowerCase() == _selectedBrand.toLowerCase();
-        
-        print('Debug _applyFilter - Product: "${product.name}"');
-        print('Debug _applyFilter - Product brandId: "${product.brandId}"');
-        print('Debug _applyFilter - Product brand: "${product.brand}"');
-        print('Debug _applyFilter - Product brandName: "${product.brandName}"');
-        print('Debug _applyFilter - Selected Brand: "$_selectedBrand"');
-        print('Debug _applyFilter - Match brandId: $matchBrandId');
-        print('Debug _applyFilter - Match brandName: $matchBrandName');
-        print('Debug _applyFilter - Match brandNameFromId: $matchBrandNameFromId');
-        print('Debug _applyFilter - Final match: ${matchBrandId || matchBrandName || matchBrandNameFromId}');
-        
-        return matchBrandId || matchBrandName || matchBrandNameFromId;
+      final b = _selectedBrand.toLowerCase();
+      _filteredProducts = _products.where((p) {
+        final byId    = p.brandId.toLowerCase() == b;
+        final byName  = p.brand.toLowerCase() == b;
+        final byLabel = (p.brandName ?? '').toLowerCase() == b;
+        return byId || byName || byLabel;
       }).toList();
-      print('Debug _applyFilter - Filtered products: ${_filteredProducts.length}');
     }
-    print('=== Debug _applyFilter END ===');
+
     notifyListeners();
   }
 
- 
-  /// ดึงสินค้าตามหมวดหมู่เฉพาะ
+  // ดึงสินค้าเฉพาะหมวดหมู่ (ถ้าอยากใช้หน้า "สินค้าหมวดหมู่นี้")
   List<Product> getProductsByCategory(String categoryId) {
-    return _products.where((product) {
-      return product.categoryId.toLowerCase() == categoryId.toLowerCase();
-    }).toList();
+    final id = categoryId.toLowerCase();
+    return _products.where((p) => p.categoryId.toLowerCase() == id).toList();
   }
 
-
-
-  /// ลบสินค้า
+  // ลบสินค้า (ใช้ในหลังบ้าน / แอดมิน)
   Future<void> deleteProduct(String productId) async {
     try {
       await FirestoreService.deleteProduct(productId);
-      // อัปเดตรายการสินค้า
-      _products.removeWhere((product) => product.id == productId);
-      _applyFilter();
+      _products.removeWhere((p) => p.id == productId);
+      _applyFilter(); // อัปเดตของที่โชว์หลังลบ
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -139,9 +73,9 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
+  // อัปเดตสถานะโหลด แล้วแจ้ง UI ให้รีเฟรช
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
   }
 }
-

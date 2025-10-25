@@ -16,8 +16,8 @@ class _AddProductPageState extends State<AddProductPage> {
   final _form = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _price = TextEditingController();
-  final _stock = TextEditingController();
-  final _desc = TextEditingController();
+ 
+  // final _desc = TextEditingController();  // ลบ description ออก
 
   String? _categoryId, _imageUrl;
   bool _saving = false;
@@ -34,8 +34,6 @@ class _AddProductPageState extends State<AddProductPage> {
   void dispose() {
     _name.dispose();
     _price.dispose();
-    _stock.dispose();
-    _desc.dispose();
     super.dispose();
   }
 
@@ -46,6 +44,7 @@ class _AddProductPageState extends State<AddProductPage> {
     // --- ตัวตรวจง่าย ๆ (คืน null = ผ่าน) ---
     String? vReq(String? v) =>
         (v == null || v.trim().isEmpty) ? 'กรุณากรอกข้อมูล' : null;
+
     String? vPrice(String? v) {
       final d = double.tryParse((v ?? '').trim());
       if (d == null) return 'กรอกราคาเป็นตัวเลข';
@@ -53,13 +52,7 @@ class _AddProductPageState extends State<AddProductPage> {
       return null;
     }
 
-    String? vStock(String? v) {
-      final n = int.tryParse((v ?? '').trim());
-      if (n == null) return 'กรอกสต็อกเป็นตัวเลข';
-      if (n < 0) return 'สต็อกต้องไม่ติดลบ';
-      return null;
-    }
-
+  
     Widget field({
       required TextEditingController c,
       required String label,
@@ -84,8 +77,10 @@ class _AddProductPageState extends State<AddProductPage> {
           padding: const EdgeInsets.all(16),
           children: [
             Row(children: [
-              const Text('รูปภาพสินค้า',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text(
+                'รูปภาพสินค้า',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
               const Spacer(),
               ElevatedButton.icon(
                 onPressed: _pickImage,
@@ -94,6 +89,7 @@ class _AddProductPageState extends State<AddProductPage> {
               ),
             ]),
             const SizedBox(height: 8),
+
             if ((_imageUrl ?? '').isNotEmpty) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
@@ -111,12 +107,17 @@ class _AddProductPageState extends State<AddProductPage> {
               ),
               const SizedBox(height: 16),
             ],
+
+            // ชื่อสินค้า
             field(
-                c: _name,
-                label: 'ชื่อสินค้า',
-                hint: 'กรอกชื่อสินค้า',
-                validator: vReq),
+              c: _name,
+              label: 'ชื่อสินค้า',
+              hint: 'กรอกชื่อสินค้า',
+              validator: vReq,
+            ),
             const SizedBox(height: 12),
+
+            // หมวดหมู่
             DropdownButtonFormField<String>(
               value: _categoryId,
               decoration: const InputDecoration(labelText: 'หมวดหมู่'),
@@ -129,26 +130,19 @@ class _AddProductPageState extends State<AddProductPage> {
                   v == null || v.isEmpty ? 'กรุณาเลือกหมวดหมู่' : null,
             ),
             const SizedBox(height: 12),
+
+            // ราคา
             field(
-                c: _price,
-                label: 'ราคา (บาท)',
-                hint: '0',
-                type: TextInputType.number,
-                validator: vPrice),
+              c: _price,
+              label: 'ราคา (บาท)',
+              hint: '0',
+              type: TextInputType.number,
+              validator: vPrice,
+            ),
             const SizedBox(height: 12),
-            field(
-                c: _stock,
-                label: 'จำนวนสต็อก',
-                hint: '0',
-                type: TextInputType.number,
-                validator: vStock),
-            const SizedBox(height: 12),
-            field(
-                c: _desc,
-                label: 'รายละเอียด (ไม่บังคับ)',
-                hint: 'จุดเด่น/รายละเอียดเพิ่มเติม',
-                maxLines: 3),
-            const SizedBox(height: 20),
+
+
+            // ปุ่มบันทึก
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -157,7 +151,8 @@ class _AddProductPageState extends State<AddProductPage> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('บันทึกสินค้า'),
               ),
             ),
@@ -170,12 +165,15 @@ class _AddProductPageState extends State<AddProductPage> {
 
   Future<void> _pickImage() async {
     final url = await Navigator.push<String>(
-        context, MaterialPageRoute(builder: (_) => const ImagePickerPage()));
+      context,
+      MaterialPageRoute(builder: (_) => const ImagePickerPage()),
+    );
     if (url?.isNotEmpty == true) setState(() => _imageUrl = url);
   }
 
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
+
     if ((_imageUrl ?? '').isEmpty) {
       _snack('กรุณาเลือกรูปสินค้า');
       return;
@@ -196,9 +194,7 @@ class _AddProductPageState extends State<AddProductPage> {
         'categoryId': _categoryId,
         'categoryName': categoryName,
         'price': double.parse(_price.text.trim()),
-        'stock': int.parse(_stock.text.trim()),
         'image': _imageUrl,
-        'description': _desc.text.trim(),
         'createdAt': now,
         'updatedAt': now,
       });

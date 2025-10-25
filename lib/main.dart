@@ -54,7 +54,6 @@ class MyApp extends StatelessWidget {
               seedColor: Color.fromARGB(255, 255, 199, 218)), // ชมพู
         ),
         darkTheme: ThemeData(
-          // จะไม่ถูกใช้ถ้าเรา fix เป็น light
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xFFE91E63),
@@ -62,8 +61,6 @@ class MyApp extends StatelessWidget {
           ),
         ),
         themeMode: ThemeMode.light,
-
-        // ถ้าอยากเริ่มที่หน้า Login ให้เปลี่ยนเป็น: home: const LoginPage(),
         initialRoute: '/login',
 
         routes: {

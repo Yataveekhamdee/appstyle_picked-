@@ -3,28 +3,36 @@ import '../models/category_model.dart' as category_model;
 import '../services/category_service.dart';
 
 class CategoryProvider extends ChangeNotifier {
+  // --- state หลักที่ UI ต้องใช้ ---
   List<category_model.Category> _categories = [];
   bool _isLoading = false;
   String? _error;
 
+  // --- ให้หน้า UI ดึงข้อมูลได้ผ่าน getter ---
   List<category_model.Category> get categories => _categories;
-  List<category_model.Category> get activeCategories => _categories.where((category) => category.isActive).toList();
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  /// โหลดข้อมูลหมวดหมู่ทั้งหมดจาก Firebase
+  // หมวดหมู่ที่เปิดใช้งาน (isActive = true)
+  // ใช้โชว์ปุ่ม ChoiceChip / Dropdown หมวดหมู่สินค้า
+  List<category_model.Category> get activeCategories =>
+      _categories.where((c) => c.isActive).toList();
+
+  // โหลดหมวดหมู่ทั้งหมดจาก Firebase แบบ realtime
+  // อธิบายง่าย ๆ: ฟัง Stream จาก CategoryService
   Future<void> loadCategories() async {
     _setLoading(true);
     _error = null;
 
     try {
-      final categoriesStream = CategoryService.watchCategories();
-      
-      categoriesStream.listen((categoriesData) {
-        _categories = categoriesData;
+      final stream = CategoryService.watchCategories();
+
+      // listen = ถ้ามีการเปลี่ยนแปลงที่ Firebase จะอัปเดตอัตโนมัติ
+      stream.listen((data) {
+        _categories = data;
         _setLoading(false);
-      }, onError: (error) {
-        _error = error.toString();
+      }, onError: (err) {
+        _error = err.toString();
         _setLoading(false);
       });
     } catch (e) {
@@ -33,45 +41,34 @@ class CategoryProvider extends ChangeNotifier {
     }
   }
 
-  /// ดึงข้อมูลหมวดหมู่ตาม ID
+  // หาหมวดหมู่จาก id (ถ้าไม่เจอ ให้ null)
   category_model.Category? getCategoryById(String categoryId) {
     try {
-      return _categories.firstWhere((category) => category.id == categoryId);
-    } catch (e) {
+      return _categories.firstWhere((c) => c.id == categoryId);
+    } catch (_) {
       return null;
     }
   }
 
-  /// ดึงชื่อหมวดหมู่ตาม ID
+  // สำหรับเวลาต้องการชื่อหมวดหมู่ไปแสดงในสินค้า
+  // ถ้าไม่เจอ id จะคืน id เองแทนเพื่อไม่ให้แอปพัง
   String getCategoryNameById(String categoryId) {
-    final category = getCategoryById(categoryId);
-    return category?.name ?? categoryId; // ถ้าไม่พบจะคืนค่า categoryId
+    final c = getCategoryById(categoryId);
+    return c?.name ?? categoryId;
   }
 
-  /// ค้นหาหมวดหมู่ตามชื่อ
+  // ค้นหาหมวดหมู่ด้วยข้อความ (ใช้กับช่องค้นหา ถ้ามี)
   List<category_model.Category> searchCategories(String query) {
     if (query.isEmpty) return _categories;
-    
-    return _categories.where((category) {
-      return category.name.toLowerCase().contains(query.toLowerCase());
-    }).toList();
+    final q = query.toLowerCase();
+    return _categories.where((c) => c.name.toLowerCase().contains(q)).toList();
   }
 
-  /// ดึงหมวดหมู่ที่เปิดใช้งานเท่านั้น
-  List<category_model.Category> getActiveCategories() {
-    return _categories.where((category) => category.isActive).toList();
-  }
-
-  /// ดึงหมวดหมู่ที่ปิดใช้งาน
-  List<category_model.Category> getInactiveCategories() {
-    return _categories.where((category) => !category.isActive).toList();
-  }
-
-  /// เพิ่มหมวดหมู่ใหม่
+  // เพิ่มหมวดหมู่ใหม่ (เรียกใช้จากหน้าหลังบ้าน / แอดมิน)
   Future<void> addCategory(category_model.Category category) async {
     try {
       await CategoryService.addCategory(category);
-      // ไม่ต้องโหลดใหม่ เพราะ Stream จะอัปเดตให้อัตโนมัติ
+      // ไม่ต้อง setState เอง เพราะ loadCategories() ฟัง Stream อยู่แล้ว
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -79,11 +76,10 @@ class CategoryProvider extends ChangeNotifier {
     }
   }
 
-  /// อัปเดตหมวดหมู่
+  // แก้ไขหมวดหมู่
   Future<void> updateCategory(category_model.Category category) async {
     try {
       await CategoryService.updateCategory(category);
-      // ไม่ต้องโหลดใหม่ เพราะ Stream จะอัปเดตให้อัตโนมัติ
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -91,11 +87,10 @@ class CategoryProvider extends ChangeNotifier {
     }
   }
 
-  /// ลบหมวดหมู่
+  // ลบหมวดหมู่
   Future<void> deleteCategory(String categoryId) async {
     try {
       await CategoryService.deleteCategory(categoryId);
-      // ไม่ต้องโหลดใหม่ เพราะ Stream จะอัปเดตให้อัตโนมัติ
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -103,13 +98,9 @@ class CategoryProvider extends ChangeNotifier {
     }
   }
 
-  void _setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
-  }
-
-  void clearError() {
-    _error = null;
+  // ใช้ภายในคลาสนี้ เพื่ออัปเดตสถานะโหลด แล้วแจ้ง UI ให้รีเฟรช
+  void _setLoading(bool value) {
+    _isLoading = value;
     notifyListeners();
   }
 }

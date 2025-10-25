@@ -1,3 +1,4 @@
+// lib/services/storage_service.dart
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -7,8 +8,40 @@ import 'package:path/path.dart' as path;
 class StorageService {
   static final _storage = FirebaseStorage.instance;
 
-  // =============== Uploads ===============
+  // ===================== (NEW) SAFE UPLOAD BY BYTES =====================
+  // ฟังก์ชันใหม่สำหรับอัปโหลดรูปจาก bytes ใช้ได้ทุกแพลตฟอร์ม
+  // => อันนี้คืออันที่ ImagePickerPage จะใช้แทนการ putFile()
+  static Future<String> uploadProductImageFromBytesUniversal(
+    Uint8List imageBytes, {
+    String? productId,
+  }) async {
+    try {
+      const folderPath = 'products';
+      final ts = DateTime.now().millisecondsSinceEpoch;
 
+      final fileName = productId != null
+          ? '${productId}_$ts.jpg'
+          : '${ts}_upload.jpg';
+
+      final ref = _storage.ref().child('$folderPath/$fileName');
+
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {
+          'uploadedAt': DateTime.now().toIso8601String(),
+          'platform': kIsWeb ? 'web' : 'mobile',
+          'size': imageBytes.length.toString(),
+        },
+      );
+
+      await ref.putData(imageBytes, metadata);
+      return await ref.getDownloadURL();
+    } catch (e) {
+      throw Exception('ไม่สามารถอัปโหลดรูปภาพ (bytes universal) ได้: $e');
+    }
+  }
+
+  // ===================== ORIGINAL CODE (KEEP) =====================
   /// อัปโหลดรูปทั่วไป (Mobile)
   static Future<String> uploadImage({
     required File imageFile,
@@ -19,7 +52,8 @@ class StorageService {
       final originalName = kIsWeb
           ? 'web_image'
           : _safeBaseName(imageFile.path) ?? 'image_file';
-      final name = fileName ?? '${DateTime.now().millisecondsSinceEpoch}_$originalName';
+      final name = fileName ??
+          '${DateTime.now().millisecondsSinceEpoch}_$originalName';
       final ref = _storage.ref().child('$folderPath/$name');
 
       final metadata = SettableMetadata(
@@ -39,7 +73,12 @@ class StorageService {
   }
 
   /// อัปโหลดรูปสินค้า (รองรับ Mobile และ Web ผ่าน bytes)
-  static Future<String> uploadProductImage(File imageFile, {String? productId}) async {
+  /// !! ระวัง: อันนี้ของเดิมยังใช้ putFile() ฝั่ง mobile ซึ่งมีโอกาส crash บน Android รุ่นใหม่
+  /// หน้าใหม่ (ImagePickerPage) เราจะไม่เรียกอันนี้แล้ว
+  static Future<String> uploadProductImage(
+    File imageFile, {
+    String? productId,
+  }) async {
     try {
       const folderPath = 'products';
       final fileName = productId != null
@@ -60,6 +99,7 @@ class StorageService {
   }
 
   /// อัปโหลดรูปสินค้าจาก bytes (Web)
+  /// (ของเดิม) — ยังเก็บไว้เพราะบางจุดในโปรเจกต์อาจเรียก
   static Future<String> uploadProductImageBytes(
     Uint8List imageBytes, {
     String? productId,
@@ -75,18 +115,17 @@ class StorageService {
     }
   }
 
-  // =============== Web internal ===============
-
+  // ===================== Web internal (KEEP) =====================
   static Future<String> _uploadFileWeb(
     File imageFile,
     String folderPath,
     String? fileName,
   ) async {
     try {
-      final name = fileName ?? '${DateTime.now().millisecondsSinceEpoch}_web_image.jpg';
+      final name =
+          fileName ?? '${DateTime.now().millisecondsSinceEpoch}_web_image.jpg';
       final ref = _storage.ref().child('$folderPath/$name');
 
-      // พยายามอ่าน bytes จาก File (บน web บางกรณี path เป็น data:uri)
       final bytes = await _readBytesFallback(imageFile);
 
       final metadata = SettableMetadata(
@@ -111,7 +150,8 @@ class StorageService {
     String? fileName,
   ) async {
     try {
-      final name = fileName ?? '${DateTime.now().millisecondsSinceEpoch}_web_image.jpg';
+      final name =
+          fileName ?? '${DateTime.now().millisecondsSinceEpoch}_web_image.jpg';
       final ref = _storage.ref().child('$folderPath/$name');
 
       final metadata = SettableMetadata(
@@ -127,18 +167,18 @@ class StorageService {
       await ref.putData(imageBytes, metadata);
       return await ref.getDownloadURL();
     } catch (e) {
-      // ถ้าเจอ CORS ให้ตั้งค่า CORS ของ Firebase Storage สำหรับ localhost
+      // เดิมคุณ handle CORS ที่นี่ เก็บไว้เหมือนเดิม
       if (e.toString().contains('CORS') ||
           e.toString().contains('blocked') ||
           e.toString().contains('XMLHttpRequest')) {
-        throw Exception('CORS Error: กรุณาตั้งค่า Firebase Storage CORS สำหรับ localhost');
+        throw Exception(
+            'CORS Error: กรุณาตั้งค่า Firebase Storage CORS สำหรับ localhost');
       }
       throw Exception('ไม่สามารถอัปโหลด bytes ใน Web platform ได้: $e');
     }
   }
 
-  // =============== File Ops ===============
-
+  // ===================== File Ops (KEEP) =====================
   static Future<void> deleteImage(String imageUrl) async {
     try {
       await _storage.refFromURL(imageUrl).delete();
@@ -173,8 +213,7 @@ class StorageService {
     }
   }
 
-  // =============== Validators / Utils ===============
-
+  // ===================== Validators / Utils (KEEP) =====================
   static bool isAllowedImageType(String filePath) {
     if (filePath.isEmpty) return false;
     const exts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
@@ -195,16 +234,19 @@ class StorageService {
 
   static bool isValidBytesSize(List<int> bytes, {int maxSizeInMB = 10}) {
     return bytes.length <= maxSizeInMB * 1024 * 1024;
+    // ใช้ได้ทั้ง mobile/web เพราะเราคุมเองก่อนอัปโหลด
   }
 
   static String formatFileSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    if (bytes < 1024 * 1024) {
+      return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    }
+    if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
-
-  // =============== Internals ===============
 
   static String? _safeBaseName(String? p) {
     if (p == null || p.isEmpty) return null;
